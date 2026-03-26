@@ -66,8 +66,8 @@
 
     <div class="row">
       <div>
-        <label>CPM:</label>
-        <input type="number" id="cpm" value="120" min="1">
+        <label>CPM: <span id="cpmMax" style="font-size:0.8em;color:#888"></span></label>
+        <input type="number" id="cpm" min="1">
       </div>
       <div>
         <label>Sample Rate:</label>
@@ -113,8 +113,8 @@
 
     <div class="row">
       <div>
-        <label>CPM (same as encode):</label>
-        <input type="number" id="decCpm" value="120" min="1">
+        <label>CPM (same as encode): <span id="decCpmMax" style="font-size:0.8em;color:#888"></span></label>
+        <input type="number" id="decCpm" min="1">
       </div>
       <div>
         <label>Sample Rate:</label>
@@ -196,6 +196,43 @@
       return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
     }
 
+    function maxCpm(sampleRate, mode) {
+      if (mode === 'psk') {
+        // Need >= 1 full cycle of 1000 Hz carrier per bit
+        // samplesPerBit >= sampleRate/1000 => cpm <= 60000/8 = 7500
+        return 7500;
+      } else {
+        // Shift-DC: need >= 2 samples per bit (Nyquist)
+        return Math.floor((sampleRate * 60) / 16);
+      }
+    }
+
+    function updateCpmDefaults(srId, modeId, cpmId, labelId) {
+      const sr   = parseInt(document.getElementById(srId).value);
+      const mode = document.getElementById(modeId).value;
+      const max  = maxCpm(sr, mode);
+      const inp  = document.getElementById(cpmId);
+      inp.max   = max;
+      inp.value = max;
+      document.getElementById(labelId).textContent = '(max ' + max.toLocaleString() + ')';
+    }
+
+    // Wire encode panel
+    document.getElementById('sampleRate').addEventListener('change', () =>
+      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
+    document.getElementById('mode').addEventListener('change', () =>
+      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
+
+    // Wire decode panel
+    document.getElementById('decSampleRate').addEventListener('change', () =>
+      updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
+    document.getElementById('decMode').addEventListener('change', () =>
+      updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
+
+    // Set initial defaults on load
+    updateCpmDefaults('sampleRate',    'mode',    'cpm',    'cpmMax');
+    updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax');
+
     async function getGPU() {
       if (gpuDevice) return gpuDevice;
       if (!navigator.gpu) return null;
@@ -233,8 +270,9 @@
       statusElem.textContent = 'Encoding\u2026';
 
       const bitDuration   = 60 / (cpm * 8);
-      const samplesPerBit = Math.floor(bitDuration * sampleRate);
-      const totalSamples  = samplesPerBit * binary.length;
+      // Use per-bit floor boundaries (avoids drift from fixed samplesPerBit)
+      const samplesPerBit = Math.floor(bitDuration * sampleRate); // used for GPU uniform & decoder match
+      const totalSamples  = Math.floor(bitDuration * binary.length * sampleRate);
       const frequency     = 1000;
       const isPSK         = mode === 'psk';
 
@@ -306,7 +344,9 @@
       if (!samples) {
         samples = new Float32Array(totalSamples);
         for (let i = 0; i < binary.length; i++) {
-          const bit = binary[i], s = i * samplesPerBit, e2 = s + samplesPerBit;
+          const bit = binary[i];
+          const s   = Math.floor(i * bitDuration * sampleRate);
+          const e2  = Math.floor((i + 1) * bitDuration * sampleRate);
           for (let j = s; j < e2; j++) {
             if (isPSK) {
               samples[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + (bit === '0' ? Math.PI : 0)) * 0.5;
