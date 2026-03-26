@@ -1,236 +1,446 @@
-<!DOCTYPE html> 
-<html>  
-<head>  
-  <title>PSK / Shift DC Encoder</title>  
-  <meta name="viewport" content="width=device-width, initial-scale=1">  
-  <style>  
-    body {  
-      font-family: sans-serif;  
-      padding: 10px;  
-      margin: 0;  
-      background: #111;  
-      color: #eee;  
-    }  
-    h1 {  
-      text-align: center;  
-      font-size: 1.5em;  
-      margin: 10px 0;  
-    }  
-    label {  
-      margin-top: 12px;  
-      display: block;  
-    }  
-    input, select, textarea, button {  
-      width: 100%;  
-      font-size: 1em;  
-      padding: 10px;  
-      margin-top: 5px;  
-      background: #222;  
-      color: #eee;  
-      border: 1px solid #444;  
-      border-radius: 5px;  
-      box-sizing: border-box;  
-    }  
-    textarea {  
-      resize: vertical;  
-    }  
-    button {  
-      background: #333;  
-      border: none;  
-      margin-top: 10px;  
-      cursor: pointer;  
-    }  
-    button:hover {  
-      background: #444;  
-    }  
-    .row {  
-      display: flex;  
-      gap: 10px;  
-      margin-top: 5px;  
-    }  
-    .row > div {  
-      flex: 1;  
-    }  
-    #statusMessage {  
-      margin-top: 6px;  
-      font-size: 0.9em;  
-      color: #66bb6a;  
-      min-height: 1.2em;  
-    }  
-    @media (max-width: 480px) {  
-      .row {  
-        flex-direction: column;  
-      }  
-    }  
-  </style>  
-</head>  
-<body>    <h1>PSK / Shift DC Encoder</h1>  <label>Input Text:</label>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PSK / Shift DC Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+      margin: 0;
+      background: #111;
+      color: #eee;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5em;
+      margin: 10px 0 14px;
+    }
 
-  <textarea id="text" rows="3" placeholder="Type your message..."></textarea>    <div class="row">  
-    <div>  
-      <label>CPM:</label>  
-      <input type="number" id="cpm" value="120" min="1">  
-    </div>  
-    <div>  
-      <label>Sample Rate:</label>  
-      <select id="sampleRate">  
-        <option value="8000">8000</option>  
-        <option value="16000">16000</option>  
-        <option value="22050">22050</option>  
-        <option value="32000">32000</option>  
-        <option value="44100" selected>44100</option>  
-        <option value="48000">48000</option>  
-        <option value="96000">96000</option>  
-        <option value="192000">192000</option>  
-      </select>  
-    </div>  
-  </div>  <label>Mode:</label>
-<select id="mode">
-<option value="psk">PSK (Pase Shift)</option>
-<option value="shift-dc">Shift DC Offset</option>
-</select>
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #333;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: #1a1a1a;
+      color: #aaa;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 5px 5px 0 0;
+      transition: background 0.15s, color 0.15s;
+      width: auto;
+      margin-top: 0;
+    }
+    .tab-btn:hover {
+      background: #222;
+      color: #eee;
+    }
+    .tab-btn.active {
+      background: #222;
+      color: #66bb6a;
+      border-bottom: 2px solid #66bb6a;
+    }
 
-<button onclick="encodeAudio()">Encode</button>
-<button onclick="playAudio()">Play</button>
-<button onclick="stopAudio()">Stop</button>
-<button onclick="downloadAudio()">Download Audio</button>
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
 
-<label>Binary Output:</label>
+    label {
+      margin-top: 12px;
+      display: block;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      font-size: 1em;
+      padding: 10px;
+      margin-top: 5px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    textarea { resize: vertical; }
+    button {
+      background: #333;
+      border: none;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    button:hover { background: #444; }
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .row > div { flex: 1; }
+    #statusMessage, #statusMessageDec {
+      margin-top: 6px;
+      font-size: 0.9em;
+      color: #66bb6a;
+      min-height: 1.2em;
+    }
 
-  <textarea id="output" rows="6" readonly></textarea>    <div id="statusMessage"></div>    <script>  
-    let audioBuffer;  
-    let context;  
-    let source;  
-    let audioReady = false;  
-  
-    function textToBinary(text) {  
-      return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');  
-    }  
-  
-    function encodeAudio() {  
-      const text = document.getElementById('text').value.trim();  
-      const cpm = parseInt(document.getElementById('cpm').value);  
-      const mode = document.getElementById('mode').value;  
-      const sampleRate = parseInt(document.getElementById('sampleRate').value);  
-      const statusElem = document.getElementById('statusMessage');  
-  
-      if (!text) {  
-        alert('Please enter text.');  
-        audioReady = false;  
-        statusElem.textContent = '';  
-        return;  
-      }  
-  
-      // Detect valid binary input: only 0 or 1 chars, at least 1 char  
-      const isBinary = /^[01]+$/.test(text);  
-  
-      const binary = isBinary ? text : textToBinary(text);  
-      document.getElementById('output').value = binary;  
-  
-      statusElem.textContent = isBinary ? 'Using raw binary input.' : 'Text converted to binary.';  
-  
-      const bitDuration = 60 / (cpm * 8);  
-      const totalSamples = Math.floor(bitDuration * binary.length * sampleRate);  
-      const buffer = new Float32Array(totalSamples);  
-      const frequency = 1000;  
-  
-      for (let i = 0; i < binary.length; i++) {  
-        const bit = binary[i];  
-        const startSample = Math.floor(i * bitDuration * sampleRate);  
-        const endSample = Math.floor((i + 1) * bitDuration * sampleRate);  
-  
-        for (let j = startSample; j < endSample; j++) {  
-          if (mode === 'psk') {  
-            const phase = (bit === '0') ? Math.PI : 0;  
-            buffer[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + phase) * 0.5;  
-          } else if (mode === 'shift-dc') {  
-            buffer[j] = (bit === '0') ? -0.5 : 0.5;  
-          }  
-        }  
-      }  
-  
-      context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sampleRate });  
-      audioBuffer = context.createBuffer(1, totalSamples, sampleRate);  
-      audioBuffer.getChannelData(0).set(buffer);  
-  
-      audioReady = true;  
-    }  
-  
-    function playAudio() {  
-      if (!audioReady || !audioBuffer || audioBuffer.length === 0) {  
-        alert("Encode something first.");  
-        return;  
-      }  
-      stopAudio();  
-      source = context.createBufferSource();  
-      source.buffer = audioBuffer;  
-      source.connect(context.destination);  
-      source.start();  
-    }  
-  
-    function stopAudio() {  
-      if (source) {  
-        try {  
-          source.stop();  
-        } catch {}  
-        source.disconnect();  
-        source = null;  
-      }  
-    }  
-  
-    function downloadAudio() {  
-      if (!audioReady || !audioBuffer) {  
-        alert("Encode something first!");  
-        return;  
-      }  
-  
-      const wavBlob = bufferToWav(audioBuffer);  
-      const url = URL.createObjectURL(wavBlob);  
-      const a = document.createElement('a');  
-      a.href = url;  
-      a.download = 'encoded_audio.wav';  
-      document.body.appendChild(a);  
-      a.click();  
-      document.body.removeChild(a);  
-    }  
-  
-    function bufferToWav(buffer) {  
-      const numOfChan = buffer.numberOfChannels,  
-            length = buffer.length * numOfChan * 2 + 44,  
-            bufferOut = new ArrayBuffer(length),  
-            view = new DataView(bufferOut),  
-            channels = [],  
-            sampleRate = buffer.sampleRate,  
-            bitDepth = 16;  
-  
-      let offset = 0;  
-      function writeString(s) { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); }  
-  
-      writeString('RIFF'); offset += 4;  
-      view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true); offset += 4;  
-      writeString('WAVE'); offset += 4;  
-      writeString('fmt '); offset += 4;  
-      view.setUint32(offset, 16, true); offset += 4;  
-      view.setUint16(offset, 1, true); offset += 2;  
-      view.setUint16(offset, numOfChan, true); offset += 2;  
-      view.setUint32(offset, sampleRate, true); offset += 4;  
-      view.setUint32(offset, sampleRate * numOfChan * bitDepth / 8, true); offset += 4;  
-      view.setUint16(offset, numOfChan * bitDepth / 8, true); offset += 2;  
-      view.setUint16(offset, bitDepth, true); offset += 2;  
-      writeString('data'); offset += 4;  
-      view.setUint32(offset, buffer.length * numOfChan * 2, true); offset += 4;  
-  
-      for (let i = 0; i < numOfChan; i++) channels.push(buffer.getChannelData(i));  
-  
-      for (let i = 0; i < buffer.length; i++) {  
-        for (let c = 0; c < numOfChan; c++) {  
-          let sample = Math.max(-1, Math.min(1, channels[c][i]));  
-          view.setInt16(offset, sample * 0x7FFF, true);  
-          offset += 2;  
-        }  
-      }  
-  
-      return new Blob([bufferOut], { type: 'audio/wav' });  
-    }  
-  </script>  </body>  
-</html>  
+    /* File upload area */
+    .upload-area {
+      border: 2px dashed #444;
+      border-radius: 5px;
+      padding: 18px 10px;
+      text-align: center;
+      margin-top: 5px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      color: #aaa;
+      font-size: 0.95em;
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: #66bb6a;
+      background: #1a2a1a;
+      color: #eee;
+    }
+    .upload-area input[type="file"] { display: none; }
+    .upload-area .upload-icon {
+      font-size: 1.8em;
+      display: block;
+      margin-bottom: 6px;
+    }
+    #fileInfo { margin-top: 5px; font-size: 0.85em; color: #66bb6a; min-height: 1.1em; }
+
+    @media (max-width: 480px) {
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>PSK / Shift DC Tool</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('encode', this)">⬆ Encode</button>
+    <button class="tab-btn" onclick="switchTab('decode', this)">⬇ Decode</button>
+  </div>
+
+  <!-- ENCODE PANEL -->
+  <div id="panel-encode" class="tab-panel active">
+
+    <label>Input Text:</label>
+    <textarea id="text" rows="3" placeholder="Type your message..."></textarea>
+
+    <label>Or Upload a File:</label>
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <span class="upload-icon">📂</span>
+      <span id="uploadLabel">Click to choose a file, or drag &amp; drop here</span>
+      <input type="file" id="fileInput" accept="*/*">
+    </div>
+    <div id="fileInfo"></div>
+
+    <div class="row">
+      <div>
+        <label>CPM:</label>
+        <input type="number" id="cpm" value="120" min="1">
+      </div>
+      <div>
+        <label>Sample Rate:</label>
+        <select id="sampleRate">
+          <option value="8000">8000</option>
+          <option value="16000">16000</option>
+          <option value="22050">22050</option>
+          <option value="32000">32000</option>
+          <option value="44100" selected>44100</option>
+          <option value="48000">48000</option>
+          <option value="96000">96000</option>
+          <option value="192000">192000</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Mode:</label>
+    <select id="mode">
+      <option value="psk">PSK (Phase Shift)</option>
+      <option value="shift-dc">Shift DC Offset</option>
+    </select>
+
+    <button onclick="encodeAudio()">Encode</button>
+    <button onclick="playAudio()">Play</button>
+    <button onclick="stopAudio()">Stop</button>
+    <button onclick="downloadAudio()">Download Audio</button>
+
+    <label>Binary Output:</label>
+    <textarea id="output" rows="6" readonly></textarea>
+
+    <div id="statusMessage"></div>
+
+  </div>
+
+  <!-- DECODE PANEL -->
+  <div id="panel-decode" class="tab-panel">
+
+    <label>Select Audio File:</label>
+    <input type="file" id="audioFile" accept="audio/wav">
+
+    <label>Mode:</label>
+    <select id="decMode">
+      <option value="psk">PSK</option>
+      <option value="shift-dc">Shift DC</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>CPM (same as encode):</label>
+        <input type="number" id="decCpm" value="120" min="1">
+      </div>
+      <div>
+        <label>Sample Rate:</label>
+        <select id="decSampleRate">
+          <option value="8000">8000</option>
+          <option value="16000">16000</option>
+          <option value="22050">22050</option>
+          <option value="32000">32000</option>
+          <option value="44100" selected>44100</option>
+          <option value="48000">48000</option>
+          <option value="96000">96000</option>
+          <option value="192000">192000</option>
+        </select>
+      </div>
+    </div>
+
+    <button onclick="decodeAudio()">Decode</button>
+
+    <label>Binary Output:</label>
+    <textarea id="binaryOutput" rows="6" readonly></textarea>
+
+    <label>Text Output (if possible):</label>
+    <textarea id="textOutput" rows="3" readonly></textarea>
+
+    <div id="statusMessageDec"></div>
+
+  </div>
+
+  <script>
+    // --- Tab switching ---
+    function switchTab(name, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    // --- Encoder ---
+    let audioBuffer, context, source, audioReady = false;
+    let uploadedBinary = null;
+
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+
+    fileInput.addEventListener('change', function() {
+      if (this.files && this.files[0]) handleFile(this.files[0]);
+    });
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+      const maxBytes = 512;
+      fileInfo.textContent = `Loading "${file.name}" (${file.size} bytes)...`;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const bytes = new Uint8Array(e.target.result);
+        const limited = bytes.slice(0, maxBytes);
+        uploadedBinary = Array.from(limited).map(b => b.toString(2).padStart(8, '0')).join('');
+        const truncated = bytes.length > maxBytes;
+        fileInfo.textContent = `✓ "${file.name}" — ${limited.length} of ${bytes.length} bytes loaded${truncated ? ' (truncated to first 512 bytes)' : ''}.`;
+        document.getElementById('uploadLabel').textContent = file.name;
+        document.getElementById('text').value = '';
+        document.getElementById('statusMessage').textContent = 'File loaded. Click Encode to proceed.';
+      };
+      reader.onerror = () => { fileInfo.textContent = '✗ Failed to read file.'; uploadedBinary = null; };
+      reader.readAsArrayBuffer(file);
+    }
+
+    document.getElementById('text').addEventListener('input', function() {
+      if (this.value.trim()) {
+        uploadedBinary = null;
+        fileInfo.textContent = '';
+        document.getElementById('uploadLabel').textContent = 'Click to choose a file, or drag & drop here';
+        fileInput.value = '';
+      }
+    });
+
+    function textToBinary(text) {
+      return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
+    }
+
+    function encodeAudio() {
+      const text = document.getElementById('text').value.trim();
+      const cpm = parseInt(document.getElementById('cpm').value);
+      const mode = document.getElementById('mode').value;
+      const sampleRate = parseInt(document.getElementById('sampleRate').value);
+      const statusElem = document.getElementById('statusMessage');
+
+      let binary, sourceLabel;
+      if (uploadedBinary) {
+        binary = uploadedBinary;
+        sourceLabel = 'File encoded as binary.';
+      } else if (!text) {
+        alert('Please enter text or upload a file.');
+        audioReady = false; statusElem.textContent = ''; return;
+      } else {
+        const isBinary = /^[01]+$/.test(text);
+        binary = isBinary ? text : textToBinary(text);
+        sourceLabel = isBinary ? 'Using raw binary input.' : 'Text converted to binary.';
+      }
+
+      document.getElementById('output').value = binary;
+      statusElem.textContent = sourceLabel;
+
+      const bitDuration = 60 / (cpm * 8);
+      const totalSamples = Math.floor(bitDuration * binary.length * sampleRate);
+      const buffer = new Float32Array(totalSamples);
+      const frequency = 1000;
+
+      for (let i = 0; i < binary.length; i++) {
+        const bit = binary[i];
+        const startSample = Math.floor(i * bitDuration * sampleRate);
+        const endSample = Math.floor((i + 1) * bitDuration * sampleRate);
+        for (let j = startSample; j < endSample; j++) {
+          if (mode === 'psk') {
+            const phase = (bit === '0') ? Math.PI : 0;
+            buffer[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + phase) * 0.5;
+          } else {
+            buffer[j] = (bit === '0') ? -0.5 : 0.5;
+          }
+        }
+      }
+
+      context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+      audioBuffer = context.createBuffer(1, totalSamples, sampleRate);
+      audioBuffer.getChannelData(0).set(buffer);
+      audioReady = true;
+    }
+
+    function playAudio() {
+      if (!audioReady || !audioBuffer) { alert("Encode something first."); return; }
+      stopAudio();
+      source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(context.destination);
+      source.start();
+    }
+
+    function stopAudio() {
+      if (source) { try { source.stop(); } catch {} source.disconnect(); source = null; }
+    }
+
+    function downloadAudio() {
+      if (!audioReady || !audioBuffer) { alert("Encode something first!"); return; }
+      const wavBlob = bufferToWav(audioBuffer);
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'encoded_audio.wav';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+
+    function bufferToWav(buffer) {
+      const numOfChan = buffer.numberOfChannels,
+            length = buffer.length * numOfChan * 2 + 44,
+            bufferOut = new ArrayBuffer(length),
+            view = new DataView(bufferOut),
+            channels = [],
+            sampleRate = buffer.sampleRate,
+            bitDepth = 16;
+      let offset = 0;
+      function writeString(s) { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); }
+      writeString('RIFF'); offset += 4;
+      view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true); offset += 4;
+      writeString('WAVE'); offset += 4;
+      writeString('fmt '); offset += 4;
+      view.setUint32(offset, 16, true); offset += 4;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint16(offset, numOfChan, true); offset += 2;
+      view.setUint32(offset, sampleRate, true); offset += 4;
+      view.setUint32(offset, sampleRate * numOfChan * bitDepth / 8, true); offset += 4;
+      view.setUint16(offset, numOfChan * bitDepth / 8, true); offset += 2;
+      view.setUint16(offset, bitDepth, true); offset += 2;
+      writeString('data'); offset += 4;
+      view.setUint32(offset, buffer.length * numOfChan * 2, true); offset += 4;
+      for (let i = 0; i < numOfChan; i++) channels.push(buffer.getChannelData(i));
+      for (let i = 0; i < buffer.length; i++) {
+        for (let c = 0; c < numOfChan; c++) {
+          let sample = Math.max(-1, Math.min(1, channels[c][i]));
+          view.setInt16(offset, sample * 0x7FFF, true); offset += 2;
+        }
+      }
+      return new Blob([bufferOut], { type: 'audio/wav' });
+    }
+
+    // --- Decoder ---
+    function decodeAudio() {
+      const fileInput = document.getElementById('audioFile');
+      if (!fileInput.files[0]) { alert('Select a WAV file first!'); return; }
+
+      const mode = document.getElementById('decMode').value;
+      const sampleRate = parseInt(document.getElementById('decSampleRate').value);
+      const cpm = parseInt(document.getElementById('decCpm').value);
+      const bitDuration = 60 / (cpm * 8);
+      const statusElem = document.getElementById('statusMessageDec');
+      statusElem.textContent = 'Decoding...';
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const decContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+        decContext.decodeAudioData(e.target.result, function(buffer) {
+          const data = buffer.getChannelData(0);
+          const samplesPerBit = Math.floor(bitDuration * sampleRate);
+          const totalBits = Math.floor(data.length / samplesPerBit);
+          let binary = '';
+
+          for (let i = 0; i < totalBits; i++) {
+            const start = i * samplesPerBit;
+            const end = start + samplesPerBit;
+            if (mode === 'shift-dc') {
+              let sum = 0;
+              for (let j = start; j < end; j++) sum += data[j];
+              binary += (sum / samplesPerBit > 0) ? '1' : '0';
+            } else {
+              let positive = 0, negative = 0;
+              for (let j = start; j < end; j++) { if (data[j] > 0) positive++; else negative++; }
+              binary += (positive > negative) ? '1' : '0';
+            }
+          }
+
+          document.getElementById('binaryOutput').value = binary;
+
+          let text = '';
+          for (let i = 0; i < binary.length; i += 8) {
+            const byte = binary.slice(i, i + 8);
+            if (byte.length === 8) {
+              const charCode = parseInt(byte, 2);
+              text += (charCode >= 32 && charCode <= 126) ? String.fromCharCode(charCode) : '.';
+            }
+          }
+          document.getElementById('textOutput').value = text;
+          statusElem.textContent = `Decoded ${totalBits} bits.`;
+        }, () => { alert('Unable to decode audio file.'); statusElem.textContent = ''; });
+      };
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+  </script>
+
+</body>
+</html>
