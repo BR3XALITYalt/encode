@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PSK / Shift DC Decoder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+      background: #111;
+      color: #eee;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5em;
+      margin: 10px 0;
+    }
+    label {
+      margin-top: 12px;
+      display: block;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      font-size: 1em;
+      padding: 10px;
+      margin-top: 5px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #333;
+      border: none;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
+    textarea {
+      resize: vertical;
+    }
+    @media (max-width: 480px) {
+      .row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>PSK / Shift DC Decoder</h1>
+
+  <label>Select Audio File:</label>
+  <input type="file" id="audioFile" accept="audio/wav">
+
+  <label>Mode:</label>
+  <select id="mode">
+    <option value="psk">PSK</option>
+    <option value="shift-dc">Shift DC</option>
+  </select>
+
+  <label>Sample Rate:</label>
+  <select id="sampleRate">
+    <option value="8000">8000</option>
+    <option value="16000">16000</option>
+    <option value="22050">22050</option>
+    <option value="32000">32000</option>
+    <option value="44100" selected>44100</option>
+    <option value="48000">48000</option>
+    <option value="96000">96000</option>
+    <option value="192000">192000</option>
+  </select>
+
+  <label>CPM (same as encode):</label>
+  <input type="number" id="cpm" value="120" min="1">
+
+  <button onclick="decodeAudio()">Decode</button>
+
+  <label>Binary Output:</label>
+  <textarea id="binaryOutput" rows="6" readonly></textarea>
+
+  <label>Text Output (if possible):</label>
+  <textarea id="textOutput" rows="3" readonly></textarea>
+
+  <script>
+    function decodeAudio() {
+      const fileInput = document.getElementById('audioFile');
+      if (!fileInput.files[0]) {
+        alert('Select a WAV file first!');
+        return;
+      }
+
+      const mode = document.getElementById('mode').value;
+      const sampleRate = parseInt(document.getElementById('sampleRate').value);
+      const cpm = parseInt(document.getElementById('cpm').value);
+      const bitDuration = 60 / (cpm * 8);
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const arrayBuffer = e.target.result;
+        const context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sampleRate });
+
+        context.decodeAudioData(arrayBuffer, function(buffer) {
+          const data = buffer.getChannelData(0);
+          const samplesPerBit = Math.floor(bitDuration * sampleRate);
+          const totalBits = Math.floor(data.length / samplesPerBit);
+
+          let binary = '';
+
+          for (let i = 0; i < totalBits; i++) {
+            let sum = 0;
+            let start = i * samplesPerBit;
+            let end = start + samplesPerBit;
+
+            for (let j = start; j < end; j++) {
+              sum += data[j];
+            }
+            let avg = sum / samplesPerBit;
+
+            if (mode === 'shift-dc') {
+              binary += (avg > 0) ? '1' : '0';
+            } else if (mode === 'psk') {
+              // For PSK, approximate phase detection using polarity
+              let positive = 0, negative = 0;
+              for (let j = start; j < end; j++) {
+                if (data[j] > 0) positive++;
+                else negative++;
+              }
+              binary += (positive > negative) ? '1' : '0';
+            }
+          }
+
+          document.getElementById('binaryOutput').value = binary;
+
+          // Try converting to text
+          let text = '';
+          for (let i = 0; i < binary.length; i += 8) {
+            let byte = binary.slice(i, i + 8);
+            if (byte.length === 8) {
+              let charCode = parseInt(byte, 2);
+              if (charCode >= 32 && charCode <= 126) {
+                text += String.fromCharCode(charCode);
+              } else {
+                text += '.';
+              }
+            }
+          }
+
+          document.getElementById('textOutput').value = text;
+
+        }, function(e) {
+          alert('Unable to decode audio file.');
+        });
+      };
+
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+  </script>
+
+</body>
+</html>
