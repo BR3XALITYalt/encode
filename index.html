@@ -303,12 +303,10 @@
         sourceLabel = isBinary ? 'Using raw binary input.' : 'Text converted to binary.';
       }
 
-      const maxBits = 1024 * 8;
-      const truncated = binary.length > maxBits;
-      if (truncated) binary = binary.slice(0, maxBits);
-
-      document.getElementById('output').value = binary;
-      statusElem.textContent = sourceLabel + (truncated ? ' (truncated to 1024 bytes)' : '');
+      const maxDisplayBits = 1024 * 8;
+      const displayTruncated = binary.length > maxDisplayBits;
+      document.getElementById('output').value = displayTruncated ? binary.slice(0, maxDisplayBits) + '…' : binary;
+      statusElem.textContent = sourceLabel + (displayTruncated ? ' (binary display truncated to 1024 bytes)' : '');
 
       const bitDuration = 60 / (cpm * 8);
       const totalSamples = Math.floor(bitDuration * binary.length * sampleRate);
