@@ -256,15 +256,12 @@
     });
 
     function handleFile(file) {
-      const maxBytes = 512;
       fileInfo.textContent = `Loading "${file.name}" (${file.size} bytes)...`;
       const reader = new FileReader();
       reader.onload = function(e) {
         const bytes = new Uint8Array(e.target.result);
-        const limited = bytes.slice(0, maxBytes);
-        uploadedBinary = Array.from(limited).map(b => b.toString(2).padStart(8, '0')).join('');
-        const truncated = bytes.length > maxBytes;
-        fileInfo.textContent = `✓ "${file.name}" — ${limited.length} of ${bytes.length} bytes loaded${truncated ? ' (truncated to first 512 bytes)' : ''}.`;
+        uploadedBinary = Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join('');
+        fileInfo.textContent = `✓ "${file.name}" — ${bytes.length} bytes loaded.`;
         document.getElementById('uploadLabel').textContent = file.name;
         document.getElementById('text').value = '';
         document.getElementById('statusMessage').textContent = 'File loaded. Click Encode to proceed.';
@@ -306,8 +303,12 @@
         sourceLabel = isBinary ? 'Using raw binary input.' : 'Text converted to binary.';
       }
 
+      const maxBits = 1024 * 8;
+      const truncated = binary.length > maxBits;
+      if (truncated) binary = binary.slice(0, maxBits);
+
       document.getElementById('output').value = binary;
-      statusElem.textContent = sourceLabel;
+      statusElem.textContent = sourceLabel + (truncated ? ' (truncated to 1024 bytes)' : '');
 
       const bitDuration = 60 / (cpm * 8);
       const totalSamples = Math.floor(bitDuration * binary.length * sampleRate);
