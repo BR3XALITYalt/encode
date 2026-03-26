@@ -4,122 +4,42 @@
   <title>PSK / Shift DC Tool</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 10px;
-      margin: 0;
-      background: #111;
-      color: #eee;
-    }
-    h1 {
-      text-align: center;
-      font-size: 1.5em;
-      margin: 10px 0 14px;
-    }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: 0;
-      margin-bottom: 14px;
-      border-bottom: 2px solid #333;
-    }
+    body { font-family: sans-serif; padding: 10px; margin: 0; background: #111; color: #eee; }
+    h1 { text-align: center; font-size: 1.5em; margin: 10px 0 14px; }
+    .tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 2px solid #333; }
     .tab-btn {
-      flex: 1;
-      padding: 10px;
-      background: #1a1a1a;
-      color: #aaa;
-      border: none;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      font-size: 1em;
-      cursor: pointer;
-      border-radius: 5px 5px 0 0;
-      transition: background 0.15s, color 0.15s;
-      width: auto;
-      margin-top: 0;
+      flex: 1; padding: 10px; background: #1a1a1a; color: #aaa; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 1em;
+      cursor: pointer; border-radius: 5px 5px 0 0; transition: background 0.15s, color 0.15s;
+      width: auto; margin-top: 0;
     }
-    .tab-btn:hover {
-      background: #222;
-      color: #eee;
-    }
-    .tab-btn.active {
-      background: #222;
-      color: #66bb6a;
-      border-bottom: 2px solid #66bb6a;
-    }
-
-    .tab-panel {
-      display: none;
-    }
-    .tab-panel.active {
-      display: block;
-    }
-
-    label {
-      margin-top: 12px;
-      display: block;
-    }
+    .tab-btn:hover { background: #222; color: #eee; }
+    .tab-btn.active { background: #222; color: #66bb6a; border-bottom: 2px solid #66bb6a; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    label { margin-top: 12px; display: block; }
     input, select, textarea, button {
-      width: 100%;
-      font-size: 1em;
-      padding: 10px;
-      margin-top: 5px;
-      background: #222;
-      color: #eee;
-      border: 1px solid #444;
-      border-radius: 5px;
-      box-sizing: border-box;
+      width: 100%; font-size: 1em; padding: 10px; margin-top: 5px;
+      background: #222; color: #eee; border: 1px solid #444; border-radius: 5px; box-sizing: border-box;
     }
     textarea { resize: vertical; }
-    button {
-      background: #333;
-      border: none;
-      margin-top: 10px;
-      cursor: pointer;
-    }
+    button { background: #333; border: none; margin-top: 10px; cursor: pointer; }
     button:hover { background: #444; }
-    .row {
-      display: flex;
-      gap: 10px;
-      margin-top: 5px;
-    }
+    .row { display: flex; gap: 10px; margin-top: 5px; }
     .row > div { flex: 1; }
     #statusMessage, #statusMessageDec {
-      margin-top: 6px;
-      font-size: 0.9em;
-      color: #66bb6a;
-      min-height: 1.2em;
+      margin-top: 6px; font-size: 0.9em; color: #66bb6a; min-height: 1.2em;
     }
-
-    /* File upload area */
     .upload-area {
-      border: 2px dashed #444;
-      border-radius: 5px;
-      padding: 18px 10px;
-      text-align: center;
-      margin-top: 5px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      color: #aaa;
-      font-size: 0.95em;
+      border: 2px dashed #444; border-radius: 5px; padding: 18px 10px; text-align: center;
+      margin-top: 5px; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      color: #aaa; font-size: 0.95em;
     }
-    .upload-area:hover, .upload-area.drag-over {
-      border-color: #66bb6a;
-      background: #1a2a1a;
-      color: #eee;
-    }
+    .upload-area:hover, .upload-area.drag-over { border-color: #66bb6a; background: #1a2a1a; color: #eee; }
     .upload-area input[type="file"] { display: none; }
-    .upload-area .upload-icon {
-      font-size: 1.8em;
-      display: block;
-      margin-bottom: 6px;
-    }
+    .upload-area .upload-icon { font-size: 1.8em; display: block; margin-bottom: 6px; }
     #fileInfo { margin-top: 5px; font-size: 0.85em; color: #66bb6a; min-height: 1.1em; }
-
-    @media (max-width: 480px) {
-      .row { flex-direction: column; }
-    }
+    @media (max-width: 480px) { .row { flex-direction: column; } }
   </style>
 </head>
 <body>
@@ -127,19 +47,18 @@
   <h1>PSK / Shift DC Tool</h1>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('encode', this)">⬆ Encode</button>
-    <button class="tab-btn" onclick="switchTab('decode', this)">⬇ Decode</button>
+    <button class="tab-btn active" onclick="switchTab('encode', this)">&#11014; Encode</button>
+    <button class="tab-btn" onclick="switchTab('decode', this)">&#11015; Decode</button>
   </div>
 
   <!-- ENCODE PANEL -->
   <div id="panel-encode" class="tab-panel active">
-
     <label>Input Text:</label>
     <textarea id="text" rows="3" placeholder="Type your message..."></textarea>
 
     <label>Or Upload a File:</label>
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-      <span class="upload-icon">📂</span>
+      <span class="upload-icon">&#128194;</span>
       <span id="uploadLabel">Click to choose a file, or drag &amp; drop here</span>
       <input type="file" id="fileInput" accept="*/*">
     </div>
@@ -178,14 +97,11 @@
 
     <label>Binary Output:</label>
     <textarea id="output" rows="6" readonly></textarea>
-
     <div id="statusMessage"></div>
-
   </div>
 
   <!-- DECODE PANEL -->
   <div id="panel-decode" class="tab-panel">
-
     <label>Select Audio File:</label>
     <input type="file" id="audioFile" accept="audio/wav">
 
@@ -222,13 +138,10 @@
 
     <label>Text Output (if possible):</label>
     <textarea id="textOutput" rows="3" readonly></textarea>
-
     <div id="statusMessageDec"></div>
-
   </div>
 
   <script>
-    // --- Tab switching ---
     function switchTab(name, btn) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -236,37 +149,37 @@
       btn.classList.add('active');
     }
 
-    // --- Encoder ---
     let audioBuffer, context, source, audioReady = false;
     let uploadedBinary = null;
+    let gpuDevice = null;
 
+    // File upload
     const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
-    const fileInfo = document.getElementById('fileInfo');
+    const fileInput  = document.getElementById('fileInput');
+    const fileInfo   = document.getElementById('fileInfo');
 
     fileInput.addEventListener('change', function() {
       if (this.files && this.files[0]) handleFile(this.files[0]);
     });
-    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
-    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('drag-over');
+    uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea.addEventListener('dragleave', ()  => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault(); uploadArea.classList.remove('drag-over');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
     function handleFile(file) {
-      fileInfo.textContent = `Loading "${file.name}" (${file.size} bytes)...`;
+      fileInfo.textContent = 'Loading "' + file.name + '" (' + file.size + ' bytes)...';
       const reader = new FileReader();
       reader.onload = function(e) {
         const bytes = new Uint8Array(e.target.result);
         uploadedBinary = Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join('');
-        fileInfo.textContent = `✓ "${file.name}" — ${bytes.length} bytes loaded.`;
+        fileInfo.textContent = '\u2713 "' + file.name + '" \u2014 ' + bytes.length + ' bytes loaded.';
         document.getElementById('uploadLabel').textContent = file.name;
         document.getElementById('text').value = '';
         document.getElementById('statusMessage').textContent = 'File loaded. Click Encode to proceed.';
       };
-      reader.onerror = () => { fileInfo.textContent = '✗ Failed to read file.'; uploadedBinary = null; };
+      reader.onerror = () => { fileInfo.textContent = '\u2717 Failed to read file.'; uploadedBinary = null; };
       reader.readAsArrayBuffer(file);
     }
 
@@ -283,58 +196,139 @@
       return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
     }
 
-    function encodeAudio() {
-      const text = document.getElementById('text').value.trim();
-      const cpm = parseInt(document.getElementById('cpm').value);
-      const mode = document.getElementById('mode').value;
+    async function getGPU() {
+      if (gpuDevice) return gpuDevice;
+      if (!navigator.gpu) return null;
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) return null;
+        gpuDevice = await adapter.requestDevice();
+        return gpuDevice;
+      } catch(e) { return null; }
+    }
+
+    // ENCODER
+    async function encodeAudio() {
+      const text       = document.getElementById('text').value.trim();
+      const cpm        = parseInt(document.getElementById('cpm').value);
+      const mode       = document.getElementById('mode').value;
       const sampleRate = parseInt(document.getElementById('sampleRate').value);
       const statusElem = document.getElementById('statusMessage');
 
       let binary, sourceLabel;
       if (uploadedBinary) {
-        binary = uploadedBinary;
-        sourceLabel = 'File encoded as binary.';
+        binary = uploadedBinary; sourceLabel = 'File encoded as binary.';
       } else if (!text) {
         alert('Please enter text or upload a file.');
         audioReady = false; statusElem.textContent = ''; return;
       } else {
-        const isBinary = /^[01]+$/.test(text);
-        binary = isBinary ? text : textToBinary(text);
-        sourceLabel = isBinary ? 'Using raw binary input.' : 'Text converted to binary.';
+        const isBin = /^[01]+$/.test(text);
+        binary = isBin ? text : textToBinary(text);
+        sourceLabel = isBin ? 'Using raw binary input.' : 'Text converted to binary.';
       }
 
-      const maxDisplayBits = 1024 * 8;
-      const displayTruncated = binary.length > maxDisplayBits;
-      document.getElementById('output').value = displayTruncated ? binary.slice(0, maxDisplayBits) + '…' : binary;
-      statusElem.textContent = sourceLabel + (displayTruncated ? ' (binary display truncated to 1024 bytes)' : '');
+      const MAX_DISP = 1024 * 8;
+      const disTrunc = binary.length > MAX_DISP;
+      document.getElementById('output').value = disTrunc ? binary.slice(0, MAX_DISP) + '\u2026' : binary;
+      statusElem.textContent = 'Encoding\u2026';
 
-      const bitDuration = 60 / (cpm * 8);
-      const totalSamples = Math.floor(bitDuration * binary.length * sampleRate);
-      const buffer = new Float32Array(totalSamples);
-      const frequency = 1000;
+      const bitDuration   = 60 / (cpm * 8);
+      const samplesPerBit = Math.floor(bitDuration * sampleRate);
+      const totalSamples  = samplesPerBit * binary.length;
+      const frequency     = 1000;
+      const isPSK         = mode === 'psk';
 
-      for (let i = 0; i < binary.length; i++) {
-        const bit = binary[i];
-        const startSample = Math.floor(i * bitDuration * sampleRate);
-        const endSample = Math.floor((i + 1) * bitDuration * sampleRate);
-        for (let j = startSample; j < endSample; j++) {
-          if (mode === 'psk') {
-            const phase = (bit === '0') ? Math.PI : 0;
-            buffer[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + phase) * 0.5;
-          } else {
-            buffer[j] = (bit === '0') ? -0.5 : 0.5;
+      const bits = new Uint32Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bits[i] = binary.charCodeAt(i) === 49 ? 1 : 0;
+
+      let samples = null, gpuUsed = false;
+      const dev = await getGPU();
+
+      if (dev) {
+        try {
+          const bitsGPU = dev.createBuffer({ size: bits.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+          dev.queue.writeBuffer(bitsGPU, 0, bits);
+
+          const outGPU  = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+          const readGPU = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+
+          const uni = new Float32Array([frequency, sampleRate, samplesPerBit, isPSK ? 1.0 : 0.0]);
+          const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+          dev.queue.writeBuffer(uniGPU, 0, uni);
+
+          const mod = dev.createShaderModule({ code: `
+            @group(0) @binding(0) var<storage, read>       bits   : array<u32>;
+            @group(0) @binding(1) var<storage, read_write> output : array<f32>;
+            @group(0) @binding(2) var<uniform>             params : vec4<f32>;
+            const TAU: f32 = 6.28318530717958;
+            const PI:  f32 = 3.14159265358979;
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+              let idx = gid.x;
+              if (idx >= arrayLength(&output)) { return; }
+              let bitIdx = idx / u32(params.z);
+              let bit    = bits[bitIdx];
+              if (params.w > 0.5) {
+                let phase = select(PI, 0.0, bit == 1u);
+                output[idx] = sin(TAU * params.x * (f32(idx) / params.y) + phase) * 0.5;
+              } else {
+                output[idx] = select(-0.5, 0.5, bit == 1u);
+              }
+            }
+          `});
+
+          const pipeline = dev.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
+          const bg = dev.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [
+              { binding: 0, resource: { buffer: bitsGPU } },
+              { binding: 1, resource: { buffer: outGPU  } },
+              { binding: 2, resource: { buffer: uniGPU  } }
+            ]
+          });
+
+          const enc  = dev.createCommandEncoder();
+          const pass = enc.beginComputePass();
+          pass.setPipeline(pipeline);
+          pass.setBindGroup(0, bg);
+          pass.dispatchWorkgroups(Math.ceil(totalSamples / 256));
+          pass.end();
+          enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalSamples * 4);
+          dev.queue.submit([enc.finish()]);
+
+          await readGPU.mapAsync(GPUMapMode.READ);
+          samples = new Float32Array(readGPU.getMappedRange().slice(0));
+          readGPU.unmap();
+          gpuUsed = true;
+        } catch(e) { console.warn('WebGPU encode failed:', e); samples = null; }
+      }
+
+      if (!samples) {
+        samples = new Float32Array(totalSamples);
+        for (let i = 0; i < binary.length; i++) {
+          const bit = binary[i], s = i * samplesPerBit, e2 = s + samplesPerBit;
+          for (let j = s; j < e2; j++) {
+            if (isPSK) {
+              samples[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + (bit === '0' ? Math.PI : 0)) * 0.5;
+            } else {
+              samples[j] = bit === '0' ? -0.5 : 0.5;
+            }
           }
         }
       }
 
-      context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+      context     = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
       audioBuffer = context.createBuffer(1, totalSamples, sampleRate);
-      audioBuffer.getChannelData(0).set(buffer);
-      audioReady = true;
+      audioBuffer.getChannelData(0).set(samples);
+      audioReady  = true;
+
+      statusElem.textContent = sourceLabel
+        + (disTrunc ? ' (binary display truncated to 1024 bytes)' : '')
+        ;
     }
 
     function playAudio() {
-      if (!audioReady || !audioBuffer) { alert("Encode something first."); return; }
+      if (!audioReady || !audioBuffer) { alert('Encode something first.'); return; }
       stopAudio();
       source = context.createBufferSource();
       source.buffer = audioBuffer;
@@ -343,101 +337,155 @@
     }
 
     function stopAudio() {
-      if (source) { try { source.stop(); } catch {} source.disconnect(); source = null; }
+      if (source) { try { source.stop(); } catch(e) {} source.disconnect(); source = null; }
     }
 
     function downloadAudio() {
-      if (!audioReady || !audioBuffer) { alert("Encode something first!"); return; }
-      const wavBlob = bufferToWav(audioBuffer);
-      const url = URL.createObjectURL(wavBlob);
-      const a = document.createElement('a');
+      if (!audioReady || !audioBuffer) { alert('Encode something first!'); return; }
+      const blob = bufferToWav(audioBuffer);
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
       a.href = url; a.download = 'encoded_audio.wav';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
-    function bufferToWav(buffer) {
-      const numOfChan = buffer.numberOfChannels,
-            length = buffer.length * numOfChan * 2 + 44,
-            bufferOut = new ArrayBuffer(length),
-            view = new DataView(bufferOut),
-            channels = [],
-            sampleRate = buffer.sampleRate,
-            bitDepth = 16;
-      let offset = 0;
-      function writeString(s) { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); }
-      writeString('RIFF'); offset += 4;
-      view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true); offset += 4;
-      writeString('WAVE'); offset += 4;
-      writeString('fmt '); offset += 4;
-      view.setUint32(offset, 16, true); offset += 4;
-      view.setUint16(offset, 1, true); offset += 2;
-      view.setUint16(offset, numOfChan, true); offset += 2;
-      view.setUint32(offset, sampleRate, true); offset += 4;
-      view.setUint32(offset, sampleRate * numOfChan * bitDepth / 8, true); offset += 4;
-      view.setUint16(offset, numOfChan * bitDepth / 8, true); offset += 2;
-      view.setUint16(offset, bitDepth, true); offset += 2;
-      writeString('data'); offset += 4;
-      view.setUint32(offset, buffer.length * numOfChan * 2, true); offset += 4;
-      for (let i = 0; i < numOfChan; i++) channels.push(buffer.getChannelData(i));
-      for (let i = 0; i < buffer.length; i++) {
-        for (let c = 0; c < numOfChan; c++) {
-          let sample = Math.max(-1, Math.min(1, channels[c][i]));
-          view.setInt16(offset, sample * 0x7FFF, true); offset += 2;
+    function bufferToWav(buf) {
+      const nc = buf.numberOfChannels, sr = buf.sampleRate;
+      const ab = new ArrayBuffer(buf.length * nc * 2 + 44);
+      const dv = new DataView(ab);
+      const ch = [];
+      let o = 0;
+      const ws = s => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+      ws('RIFF'); o+=4; dv.setUint32(o, 36 + buf.length*nc*2, true); o+=4;
+      ws('WAVE'); o+=4; ws('fmt '); o+=4;
+      dv.setUint32(o,16,true);o+=4; dv.setUint16(o,1,true);o+=2; dv.setUint16(o,nc,true);o+=2;
+      dv.setUint32(o,sr,true);o+=4; dv.setUint32(o,sr*nc*2,true);o+=4;
+      dv.setUint16(o,nc*2,true);o+=2; dv.setUint16(o,16,true);o+=2;
+      ws('data'); o+=4; dv.setUint32(o, buf.length*nc*2, true); o+=4;
+      for (let i = 0; i < nc; i++) ch.push(buf.getChannelData(i));
+      for (let i = 0; i < buf.length; i++) {
+        for (let c = 0; c < nc; c++) {
+          dv.setInt16(o, Math.max(-1, Math.min(1, ch[c][i])) * 0x7FFF, true); o+=2;
         }
       }
-      return new Blob([bufferOut], { type: 'audio/wav' });
+      return new Blob([ab], { type: 'audio/wav' });
     }
 
-    // --- Decoder ---
-    function decodeAudio() {
-      const fileInput = document.getElementById('audioFile');
-      if (!fileInput.files[0]) { alert('Select a WAV file first!'); return; }
+    // DECODER
+    async function decodeAudio() {
+      const fileEl = document.getElementById('audioFile');
+      if (!fileEl.files[0]) { alert('Select a WAV file first!'); return; }
 
-      const mode = document.getElementById('decMode').value;
+      const mode       = document.getElementById('decMode').value;
       const sampleRate = parseInt(document.getElementById('decSampleRate').value);
-      const cpm = parseInt(document.getElementById('decCpm').value);
-      const bitDuration = 60 / (cpm * 8);
+      const cpm        = parseInt(document.getElementById('decCpm').value);
+      const spb        = Math.floor((60 / (cpm * 8)) * sampleRate);
       const statusElem = document.getElementById('statusMessageDec');
-      statusElem.textContent = 'Decoding...';
+      statusElem.textContent = 'Decoding\u2026';
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const decContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-        decContext.decodeAudioData(e.target.result, function(buffer) {
-          const data = buffer.getChannelData(0);
-          const samplesPerBit = Math.floor(bitDuration * sampleRate);
-          const totalBits = Math.floor(data.length / samplesPerBit);
-          let binary = '';
+      const arrayBuf = await fileEl.files[0].arrayBuffer();
+      const decCtx   = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+      const isPSK    = mode === 'psk';
 
+      decCtx.decodeAudioData(arrayBuf, async function(audioBuf) {
+        const data      = audioBuf.getChannelData(0);
+        const totalBits = Math.floor(data.length / spb);
+
+        let bitArr = null, gpuUsed = false;
+        const dev  = await getGPU();
+
+        if (dev) {
+          try {
+            const samplesGPU = dev.createBuffer({ size: data.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+            dev.queue.writeBuffer(samplesGPU, 0, data);
+
+            const outGPU  = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+            const readGPU = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+
+            const uni    = new Uint32Array([spb, isPSK ? 1 : 0, totalBits, 0]);
+            const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+            dev.queue.writeBuffer(uniGPU, 0, uni);
+
+            const mod = dev.createShaderModule({ code: `
+              @group(0) @binding(0) var<storage, read>       samples : array<f32>;
+              @group(0) @binding(1) var<storage, read_write> output  : array<u32>;
+              @group(0) @binding(2) var<uniform>             params  : vec4<u32>;
+              @compute @workgroup_size(256)
+              fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                let bi = gid.x;
+                if (bi >= params.z) { return; }
+                let start = bi * params.x;
+                let end   = start + params.x;
+                var sum: f32 = 0.0; var pos: u32 = 0u; var neg: u32 = 0u;
+                for (var j = start; j < end; j++) {
+                  let s = samples[j]; sum += s;
+                  if (s > 0.0) { pos++; } else { neg++; }
+                }
+                if (params.y == 0u) {
+                  output[bi] = select(0u, 1u, sum > 0.0);
+                } else {
+                  output[bi] = select(0u, 1u, pos > neg);
+                }
+              }
+            `});
+
+            const pipeline = dev.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
+            const bg = dev.createBindGroup({
+              layout: pipeline.getBindGroupLayout(0),
+              entries: [
+                { binding: 0, resource: { buffer: samplesGPU } },
+                { binding: 1, resource: { buffer: outGPU     } },
+                { binding: 2, resource: { buffer: uniGPU     } }
+              ]
+            });
+
+            const enc  = dev.createCommandEncoder();
+            const pass = enc.beginComputePass();
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bg);
+            pass.dispatchWorkgroups(Math.ceil(totalBits / 256));
+            pass.end();
+            enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalBits * 4);
+            dev.queue.submit([enc.finish()]);
+
+            await readGPU.mapAsync(GPUMapMode.READ);
+            bitArr  = new Uint32Array(readGPU.getMappedRange().slice(0));
+            readGPU.unmap();
+            gpuUsed = true;
+          } catch(e) { console.warn('WebGPU decode failed:', e); bitArr = null; }
+        }
+
+        let binary = '';
+        if (bitArr) {
+          binary = Array.from(bitArr).join('');
+        } else {
           for (let i = 0; i < totalBits; i++) {
-            const start = i * samplesPerBit;
-            const end = start + samplesPerBit;
-            if (mode === 'shift-dc') {
-              let sum = 0;
-              for (let j = start; j < end; j++) sum += data[j];
-              binary += (sum / samplesPerBit > 0) ? '1' : '0';
+            const s = i * spb, e2 = s + spb;
+            if (!isPSK) {
+              let sum = 0; for (let j = s; j < e2; j++) sum += data[j];
+              binary += sum > 0 ? '1' : '0';
             } else {
-              let positive = 0, negative = 0;
-              for (let j = start; j < end; j++) { if (data[j] > 0) positive++; else negative++; }
-              binary += (positive > negative) ? '1' : '0';
+              let pos = 0, neg = 0;
+              for (let j = s; j < e2; j++) { if (data[j] > 0) pos++; else neg++; }
+              binary += pos > neg ? '1' : '0';
             }
           }
+        }
 
-          document.getElementById('binaryOutput').value = binary;
+        document.getElementById('binaryOutput').value = binary;
 
-          let text = '';
-          for (let i = 0; i < binary.length; i += 8) {
-            const byte = binary.slice(i, i + 8);
-            if (byte.length === 8) {
-              const charCode = parseInt(byte, 2);
-              text += (charCode >= 32 && charCode <= 126) ? String.fromCharCode(charCode) : '.';
-            }
+        let text = '';
+        for (let i = 0; i < binary.length; i += 8) {
+          const byte = binary.slice(i, i + 8);
+          if (byte.length === 8) {
+            const c = parseInt(byte, 2);
+            text += (c >= 32 && c <= 126) ? String.fromCharCode(c) : '.';
           }
-          document.getElementById('textOutput').value = text;
-          statusElem.textContent = `Decoded ${totalBits} bits.`;
-        }, () => { alert('Unable to decode audio file.'); statusElem.textContent = ''; });
-      };
-      reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+        document.getElementById('textOutput').value = text;
+        statusElem.textContent = 'Decoded ' + totalBits + ' bits.';
+
+      }, () => { alert('Unable to decode audio file.'); statusElem.textContent = ''; });
     }
   </script>
 
