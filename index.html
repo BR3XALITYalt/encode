@@ -40,6 +40,34 @@
     .upload-area .upload-icon { font-size: 1.8em; display: block; margin-bottom: 6px; }
     #fileInfo { margin-top: 5px; font-size: 0.85em; color: #66bb6a; min-height: 1.1em; }
     @media (max-width: 480px) { .row { flex-direction: column; } }
+
+    /* Sample rate combobox */
+    .sr-wrap { position: relative; margin-top: 5px; }
+    .sr-wrap input[type="number"] {
+      margin-top: 0;
+      padding-right: 38px;
+      border-radius: 5px;
+    }
+    .sr-arrow {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 36px;
+      background: #2e2e2e; border: 1px solid #444; border-left: none;
+      border-radius: 0 5px 5px 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #aaa; font-size: 0.7em; user-select: none; transition: background 0.15s;
+    }
+    .sr-arrow:hover { background: #3a3a3a; color: #eee; }
+    .sr-dropdown {
+      display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+      background: #222; border: 1px solid #555; border-top: none;
+      border-radius: 0 0 5px 5px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .sr-dropdown.open { display: block; }
+    .sr-dropdown div {
+      padding: 9px 12px; cursor: pointer; font-size: 0.95em; color: #ccc;
+      transition: background 0.1s;
+    }
+    .sr-dropdown div:hover { background: #2e2e2e; color: #eee; }
+    .sr-dropdown div.active { color: #66bb6a; }
   </style>
 </head>
 <body>
@@ -71,16 +99,11 @@
       </div>
       <div>
         <label>Sample Rate:</label>
-        <select id="sampleRate">
-          <option value="8000">8000</option>
-          <option value="16000">16000</option>
-          <option value="22050">22050</option>
-          <option value="32000">32000</option>
-          <option value="44100" selected>44100</option>
-          <option value="48000">48000</option>
-          <option value="96000">96000</option>
-          <option value="192000">192000</option>
-        </select>
+        <div class="sr-wrap">
+          <input type="number" id="sampleRate" value="44100" min="1">
+          <div class="sr-arrow" onclick="toggleDropdown('srDrop')">&#9660;</div>
+          <div class="sr-dropdown" id="srDrop"></div>
+        </div>
       </div>
     </div>
 
@@ -118,16 +141,11 @@
       </div>
       <div>
         <label>Sample Rate:</label>
-        <select id="decSampleRate">
-          <option value="8000">8000</option>
-          <option value="16000">16000</option>
-          <option value="22050">22050</option>
-          <option value="32000">32000</option>
-          <option value="44100" selected>44100</option>
-          <option value="48000">48000</option>
-          <option value="96000">96000</option>
-          <option value="192000">192000</option>
-        </select>
+        <div class="sr-wrap">
+          <input type="number" id="decSampleRate" value="44100" min="1">
+          <div class="sr-arrow" onclick="toggleDropdown('decSrDrop')">&#9660;</div>
+          <div class="sr-dropdown" id="decSrDrop"></div>
+        </div>
       </div>
     </div>
 
@@ -142,6 +160,7 @@
   </div>
 
   <script>
+    // ── Tabs ──────────────────────────────────────────────────────────────────
     function switchTab(name, btn) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -149,11 +168,52 @@
       btn.classList.add('active');
     }
 
+    // ── Sample rate combobox ──────────────────────────────────────────────────
+    const SR_PRESETS = [8000, 16000, 22050, 32000, 44100, 48000, 96000, 192000];
+
+    function buildDropdown(dropId, inputId, onSelect) {
+      const drop  = document.getElementById(dropId);
+      const input = document.getElementById(inputId);
+      drop.innerHTML = '';
+      const cur = parseInt(input.value);
+      SR_PRESETS.forEach(sr => {
+        const div = document.createElement('div');
+        div.textContent = sr.toLocaleString();
+        if (sr === cur) div.classList.add('active');
+        div.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = sr;
+          drop.classList.remove('open');
+          onSelect();
+        });
+        drop.appendChild(div);
+      });
+    }
+
+    function toggleDropdown(dropId) {
+      const drop = document.getElementById(dropId);
+      const isEnc = dropId === 'srDrop';
+      buildDropdown(dropId, isEnc ? 'sampleRate' : 'decSampleRate',
+        isEnc
+          ? () => updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax')
+          : () => updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax')
+      );
+      drop.classList.toggle('open');
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.sr-wrap')) {
+        document.querySelectorAll('.sr-dropdown').forEach(d => d.classList.remove('open'));
+      }
+    });
+
+    // ── Shared state ──────────────────────────────────────────────────────────
     let audioBuffer, context, source, audioReady = false;
     let uploadedBinary = null;
     let gpuDevice = null;
 
-    // File upload
+    // ── File upload ───────────────────────────────────────────────────────────
     const uploadArea = document.getElementById('uploadArea');
     const fileInput  = document.getElementById('fileInput');
     const fileInfo   = document.getElementById('fileInfo');
@@ -196,19 +256,14 @@
       return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
     }
 
+    // ── CPM defaults ──────────────────────────────────────────────────────────
     function maxCpm(sampleRate, mode) {
-      if (mode === 'psk') {
-        // Need >= 1 full cycle of 1000 Hz carrier per bit
-        // samplesPerBit >= sampleRate/1000 => cpm <= 60000/8 = 7500
-        return 7500;
-      } else {
-        // Shift-DC: need >= 2 samples per bit (Nyquist)
-        return Math.floor((sampleRate * 60) / 16);
-      }
+      if (mode === 'psk') return 7500;
+      return Math.floor((sampleRate * 60) / 16);
     }
 
     function updateCpmDefaults(srId, modeId, cpmId, labelId) {
-      const sr   = parseInt(document.getElementById(srId).value);
+      const sr   = parseInt(document.getElementById(srId).value) || 44100;
       const mode = document.getElementById(modeId).value;
       const max  = maxCpm(sr, mode);
       const inp  = document.getElementById(cpmId);
@@ -217,22 +272,19 @@
       document.getElementById(labelId).textContent = '(max ' + max.toLocaleString() + ')';
     }
 
-    // Wire encode panel
-    document.getElementById('sampleRate').addEventListener('change', () =>
+    document.getElementById('sampleRate').addEventListener('input', () =>
       updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
     document.getElementById('mode').addEventListener('change', () =>
       updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
-
-    // Wire decode panel
-    document.getElementById('decSampleRate').addEventListener('change', () =>
+    document.getElementById('decSampleRate').addEventListener('input', () =>
       updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
     document.getElementById('decMode').addEventListener('change', () =>
       updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
 
-    // Set initial defaults on load
     updateCpmDefaults('sampleRate',    'mode',    'cpm',    'cpmMax');
     updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax');
 
+    // ── WebGPU ────────────────────────────────────────────────────────────────
     async function getGPU() {
       if (gpuDevice) return gpuDevice;
       if (!navigator.gpu) return null;
@@ -244,7 +296,7 @@
       } catch(e) { return null; }
     }
 
-    // ENCODER
+    // ── Encoder ───────────────────────────────────────────────────────────────
     async function encodeAudio() {
       const text       = document.getElementById('text').value.trim();
       const cpm        = parseInt(document.getElementById('cpm').value);
@@ -270,8 +322,7 @@
       statusElem.textContent = 'Encoding\u2026';
 
       const bitDuration   = 60 / (cpm * 8);
-      // Use per-bit floor boundaries (avoids drift from fixed samplesPerBit)
-      const samplesPerBit = Math.floor(bitDuration * sampleRate); // used for GPU uniform & decoder match
+      const samplesPerBit = Math.floor(bitDuration * sampleRate);
       const totalSamples  = Math.floor(bitDuration * binary.length * sampleRate);
       const frequency     = 1000;
       const isPSK         = mode === 'psk';
@@ -286,10 +337,8 @@
         try {
           const bitsGPU = dev.createBuffer({ size: bits.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
           dev.queue.writeBuffer(bitsGPU, 0, bits);
-
           const outGPU  = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
           const readGPU = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
-
           const uni = new Float32Array([frequency, sampleRate, samplesPerBit, isPSK ? 1.0 : 0.0]);
           const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
           dev.queue.writeBuffer(uniGPU, 0, uni);
@@ -324,16 +373,13 @@
               { binding: 2, resource: { buffer: uniGPU  } }
             ]
           });
-
           const enc  = dev.createCommandEncoder();
           const pass = enc.beginComputePass();
-          pass.setPipeline(pipeline);
-          pass.setBindGroup(0, bg);
+          pass.setPipeline(pipeline); pass.setBindGroup(0, bg);
           pass.dispatchWorkgroups(Math.ceil(totalSamples / 256));
           pass.end();
           enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalSamples * 4);
           dev.queue.submit([enc.finish()]);
-
           await readGPU.mapAsync(GPUMapMode.READ);
           samples = new Float32Array(readGPU.getMappedRange().slice(0));
           readGPU.unmap();
@@ -362,9 +408,7 @@
       audioBuffer.getChannelData(0).set(samples);
       audioReady  = true;
 
-      statusElem.textContent = sourceLabel
-        + (disTrunc ? ' (binary display truncated to 1024 bytes)' : '')
-        ;
+      statusElem.textContent = sourceLabel + (disTrunc ? ' (binary display truncated to 1024 bytes)' : '');
     }
 
     function playAudio() {
@@ -411,7 +455,7 @@
       return new Blob([ab], { type: 'audio/wav' });
     }
 
-    // DECODER
+    // ── Decoder ───────────────────────────────────────────────────────────────
     async function decodeAudio() {
       const fileEl = document.getElementById('audioFile');
       if (!fileEl.files[0]) { alert('Select a WAV file first!'); return; }
@@ -438,10 +482,8 @@
           try {
             const samplesGPU = dev.createBuffer({ size: data.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
             dev.queue.writeBuffer(samplesGPU, 0, data);
-
             const outGPU  = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
             const readGPU = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
-
             const uni    = new Uint32Array([spb, isPSK ? 1 : 0, totalBits, 0]);
             const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
             dev.queue.writeBuffer(uniGPU, 0, uni);
@@ -478,16 +520,13 @@
                 { binding: 2, resource: { buffer: uniGPU     } }
               ]
             });
-
             const enc  = dev.createCommandEncoder();
             const pass = enc.beginComputePass();
-            pass.setPipeline(pipeline);
-            pass.setBindGroup(0, bg);
+            pass.setPipeline(pipeline); pass.setBindGroup(0, bg);
             pass.dispatchWorkgroups(Math.ceil(totalBits / 256));
             pass.end();
             enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalBits * 4);
             dev.queue.submit([enc.finish()]);
-
             await readGPU.mapAsync(GPUMapMode.READ);
             bitArr  = new Uint32Array(readGPU.getMappedRange().slice(0));
             readGPU.unmap();
