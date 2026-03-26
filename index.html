@@ -107,6 +107,17 @@
       </div>
     </div>
 
+    <div class="row" id="hzRow" style="display:none">
+      <div>
+        <label>Carrier Hz:</label>
+        <div class="sr-wrap">
+          <input type="number" id="carrierHz" value="1000" min="1">
+          <div class="sr-arrow" onclick="toggleDropdown('hzDrop')">&#9660;</div>
+          <div class="sr-dropdown" id="hzDrop"></div>
+        </div>
+      </div>
+    </div>
+
     <label>Mode:</label>
     <select id="mode">
       <option value="psk">PSK (Phase Shift)</option>
@@ -192,12 +203,16 @@
 
     function toggleDropdown(dropId) {
       const drop = document.getElementById(dropId);
-      const isEnc = dropId === 'srDrop';
-      buildDropdown(dropId, isEnc ? 'sampleRate' : 'decSampleRate',
-        isEnc
-          ? () => updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax')
-          : () => updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax')
-      );
+      if (dropId === 'hzDrop') {
+        buildHzDropdown();
+      } else {
+        const isEnc = dropId === 'srDrop';
+        buildDropdown(dropId, isEnc ? 'sampleRate' : 'decSampleRate',
+          isEnc
+            ? () => updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax')
+            : () => updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax')
+        );
+      }
       drop.classList.toggle('open');
     }
 
@@ -257,30 +272,65 @@
     }
 
     // ── CPM defaults ──────────────────────────────────────────────────────────
-    function maxCpm(sampleRate, mode) {
-      if (mode === 'psk') return 7500;
+    function maxCpm(sampleRate, mode, freqHz) {
+      if (mode === 'psk') {
+        // need >= 1 full cycle per bit: spb >= sr/freq => cpm <= freq*60/8
+        return Math.floor((freqHz * 60) / 8);
+      }
       return Math.floor((sampleRate * 60) / 16);
     }
 
     function updateCpmDefaults(srId, modeId, cpmId, labelId) {
       const sr   = parseInt(document.getElementById(srId).value) || 44100;
       const mode = document.getElementById(modeId).value;
-      const max  = maxCpm(sr, mode);
+      const hz   = parseInt(document.getElementById('carrierHz').value) || 1000;
+      const max  = maxCpm(sr, mode, hz);
       const inp  = document.getElementById(cpmId);
       inp.max   = max;
       inp.value = max;
       document.getElementById(labelId).textContent = '(max ' + max.toLocaleString() + ')';
     }
 
+    const HZ_PRESETS = [100, 200, 300, 400, 500, 700, 1000, 1200, 1500, 2000, 2500, 3000];
+
+    function buildHzDropdown() {
+      const drop  = document.getElementById('hzDrop');
+      const input = document.getElementById('carrierHz');
+      drop.innerHTML = '';
+      const cur = parseInt(input.value);
+      HZ_PRESETS.forEach(hz => {
+        const div = document.createElement('div');
+        div.textContent = hz + ' Hz';
+        if (hz === cur) div.classList.add('active');
+        div.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = hz;
+          drop.classList.remove('open');
+          updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax');
+        });
+        drop.appendChild(div);
+      });
+    }
+
+    function updateHzVisibility() {
+      const isPSK = document.getElementById('mode').value === 'psk';
+      document.getElementById('hzRow').style.display = isPSK ? '' : 'none';
+    }
+
     document.getElementById('sampleRate').addEventListener('input', () =>
       updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
-    document.getElementById('mode').addEventListener('change', () =>
+    document.getElementById('carrierHz').addEventListener('input', () =>
       updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
+    document.getElementById('mode').addEventListener('change', () => {
+      updateHzVisibility();
+      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax');
+    });
     document.getElementById('decSampleRate').addEventListener('input', () =>
       updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
     document.getElementById('decMode').addEventListener('change', () =>
       updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
 
+    updateHzVisibility();
     updateCpmDefaults('sampleRate',    'mode',    'cpm',    'cpmMax');
     updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax');
 
@@ -324,7 +374,7 @@
       const bitDuration   = 60 / (cpm * 8);
       const samplesPerBit = Math.floor(bitDuration * sampleRate);
       const totalSamples  = Math.floor(bitDuration * binary.length * sampleRate);
-      const frequency     = 1000;
+      const frequency     = (isPSK ? (parseInt(document.getElementById('carrierHz').value) || 1000) : 1000);
       const isPSK         = mode === 'psk';
 
       const bits = new Uint32Array(binary.length);
