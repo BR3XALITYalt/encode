@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PSK / Shift DC Tool</title>
+  <title>PSK / OOK&NRZ Tool</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: sans-serif; padding: 10px; margin: 0; background: #111; color: #eee; }
@@ -72,7 +72,7 @@
 </head>
 <body>
 
-  <h1>PSK / Shift DC Tool</h1>
+  <h1>PSK / OOK&NRZ Tool</h1>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('encode', this)">&#11014; Encode</button>
@@ -121,7 +121,7 @@
     <label>Mode:</label>
     <select id="mode">
       <option value="psk">PSK (Phase Shift)</option>
-      <option value="shift-dc" selected>Shift DC Offset</option>
+      <option value="shift-dc" selected>OOK/NRZ</option>
     </select>
 
     <button onclick="encodeAudio()">Encode</button>
@@ -142,7 +142,7 @@
     <label>Mode:</label>
     <select id="decMode">
       <option value="psk">PSK</option>
-      <option value="shift-dc" selected>Shift DC</option>
+      <option value="shift-dc" selected>OOK/NRZ</option>
     </select>
 
     <div class="row">
