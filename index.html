@@ -27,27 +27,18 @@
     button:hover { background: #444; }
     .row { display: flex; gap: 10px; margin-top: 5px; }
     .row > div { flex: 1; }
-    #statusMessage, #statusMessageDec {
-      margin-top: 6px; font-size: 0.9em; color: #66bb6a; min-height: 1.2em;
-    }
+    #statusMessage, #statusMessageDec { margin-top: 6px; font-size: 0.9em; color: #66bb6a; min-height: 1.2em; }
     .upload-area {
       border: 2px dashed #444; border-radius: 5px; padding: 18px 10px; text-align: center;
-      margin-top: 5px; cursor: pointer; transition: border-color 0.2s, background 0.2s;
-      color: #aaa; font-size: 0.95em;
+      margin-top: 5px; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: #aaa; font-size: 0.95em;
     }
     .upload-area:hover, .upload-area.drag-over { border-color: #66bb6a; background: #1a2a1a; color: #eee; }
     .upload-area input[type="file"] { display: none; }
     .upload-area .upload-icon { font-size: 1.8em; display: block; margin-bottom: 6px; }
     #fileInfo { margin-top: 5px; font-size: 0.85em; color: #66bb6a; min-height: 1.1em; }
     @media (max-width: 480px) { .row { flex-direction: column; } }
-
-    /* Sample rate combobox */
     .sr-wrap { position: relative; margin-top: 5px; }
-    .sr-wrap input[type="number"] {
-      margin-top: 0;
-      padding-right: 38px;
-      border-radius: 5px;
-    }
+    .sr-wrap input[type="number"] { margin-top: 0; padding-right: 38px; border-radius: 5px; }
     .sr-arrow {
       position: absolute; right: 0; top: 0; bottom: 0; width: 36px;
       background: #2e2e2e; border: 1px solid #444; border-left: none;
@@ -62,16 +53,27 @@
       border-radius: 0 0 5px 5px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
     .sr-dropdown.open { display: block; }
-    .sr-dropdown div {
-      padding: 9px 12px; cursor: pointer; font-size: 0.95em; color: #ccc;
-      transition: background 0.1s;
-    }
+    .sr-dropdown div { padding: 9px 12px; cursor: pointer; font-size: 0.95em; color: #ccc; transition: background 0.1s; }
     .sr-dropdown div:hover { background: #2e2e2e; color: #eee; }
     .sr-dropdown div.active { color: #66bb6a; }
+    /* metadata box */
+    #metaBox, #decMetaBox {
+      margin-top: 8px; padding: 8px 10px; background: #1a1a1a; border: 1px solid #333;
+      border-radius: 5px; font-size: 0.85em; color: #aaa; display: none;
+    }
+    #metaBox span, #decMetaBox span { color: #66bb6a; }
+    /* mic button states */
+    #micBtn.listening { background: #4a1a1a; color: #ff6b6b; border: 1px solid #ff4444; }
+    /* live canvas */
+    #liveCanvas {
+      display: none; width: 100%; margin-top: 8px; border: 1px solid #333;
+      border-radius: 5px; image-rendering: pixelated;
+    }
+    /* accel badge */
+    #accelBadge { font-size: 0.75em; color: #555; margin-top: 4px; }
   </style>
 </head>
 <body>
-
   <h1>PSK / OOK&NRZ Tool</h1>
 
   <div class="tabs">
@@ -79,7 +81,7 @@
     <button class="tab-btn" onclick="switchTab('decode', this)">&#11015; Decode</button>
   </div>
 
-  <!-- ENCODE PANEL -->
+  <!-- ENCODE -->
   <div id="panel-encode" class="tab-panel active">
     <label>Input Text:</label>
     <textarea id="text" rows="3" placeholder="Type your message..."></textarea>
@@ -91,6 +93,24 @@
       <input type="file" id="fileInput" accept="*/*">
     </div>
     <div id="fileInfo"></div>
+    <div id="metaBox"></div>
+    <div id="imgFmtToggle" style="display:none;margin-top:8px;font-size:0.9em;color:#aaa;">
+      <div style="margin-bottom:4px;color:#888;">Image format:</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label style="margin-top:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="radio" name="imgFmt" id="fmtRgba" value="rgba" checked style="width:auto;margin:0;cursor:pointer;">
+          Raw RGBA — glitchy live preview, largest
+        </label>
+        <label style="margin-top:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="radio" name="imgFmt" id="fmtBmp" value="bmp" style="width:auto;margin:0;cursor:pointer;">
+          BMP — standard file, scanline-by-scanline preview
+        </label>
+        <label style="margin-top:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="radio" name="imgFmt" id="fmtOrig" value="orig" style="width:auto;margin:0;cursor:pointer;">
+          Original (<span id="origFmtLabel">compressed</span>) — gets less glitchy as data arrives
+        </label>
+      </div>
+    </div>
 
     <div class="row">
       <div>
@@ -128,16 +148,30 @@
     <button onclick="playAudio()">Play</button>
     <button onclick="stopAudio()">Stop</button>
     <button onclick="downloadAudio()">Download Audio</button>
+    <div id="accelBadge"></div>
 
     <label>Binary Output:</label>
     <textarea id="output" rows="6" readonly></textarea>
     <div id="statusMessage"></div>
   </div>
 
-  <!-- DECODE PANEL -->
+  <!-- DECODE -->
   <div id="panel-decode" class="tab-panel">
-    <label>Select Audio File:</label>
-    <input type="file" id="audioFile" accept="audio/wav">
+    <label>Source:</label>
+    <div class="row">
+      <div><button onclick="setDecSource('file')" id="srcFileBtn" style="margin-top:5px;background:#2a3a2a;color:#66bb6a">&#128190; File</button></div>
+      <div><button onclick="setDecSource('mic')"  id="srcMicBtn"  style="margin-top:5px">&#127908; Microphone</button></div>
+    </div>
+
+    <div id="fileSourceArea">
+      <label>Select Audio File:</label>
+      <input type="file" id="audioFile" accept="audio/*">
+    </div>
+
+    <div id="micSourceArea" style="display:none">
+      <button id="micBtn" onclick="toggleMic()" style="margin-top:10px">&#9679; Start Listening</button>
+      <div style="font-size:0.8em;color:#666;margin-top:4px">Auto-syncs on magic byte detection</div>
+    </div>
 
     <label>Mode:</label>
     <select id="decMode">
@@ -147,7 +181,7 @@
 
     <div class="row">
       <div>
-        <label>CPM (same as encode): <span id="decCpmMax" style="font-size:0.8em;color:#888"></span></label>
+        <label>CPM: <span id="decCpmMax" style="font-size:0.8em;color:#888"></span></label>
         <input type="number" id="decCpm" min="1">
       </div>
       <div>
@@ -160,463 +194,774 @@
       </div>
     </div>
 
-    <button onclick="decodeAudio()">Decode</button>
+    <button onclick="decodeAudio()" id="decodeBtn">Decode File</button>
+
+    <div id="decMetaBox"></div>
+    <canvas id="liveCanvas"></canvas>
 
     <label>Binary Output:</label>
     <textarea id="binaryOutput" rows="6" readonly></textarea>
-
     <label>Text Output (if possible):</label>
     <textarea id="textOutput" rows="3" readonly></textarea>
     <div id="statusMessageDec"></div>
   </div>
 
   <script>
-    // ── Tabs ──────────────────────────────────────────────────────────────────
-    function switchTab(name, btn) {
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('panel-' + name).classList.add('active');
-      btn.classList.add('active');
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Comboboxes ────────────────────────────────────────────────────────────
+  const SR_PRESETS  = [8000,16000,22050,32000,44100,48000,96000,192000];
+  const HZ_PRESETS  = [100,200,300,400,500,700,1000,1200,1500,2000,2500,3000];
+
+  function buildDropdown(dropId, inputId, onSelect) {
+    const drop = document.getElementById(dropId), input = document.getElementById(inputId);
+    drop.innerHTML = '';
+    const cur = parseInt(input.value);
+    SR_PRESETS.forEach(sr => {
+      const div = document.createElement('div');
+      div.textContent = sr.toLocaleString();
+      if (sr === cur) div.classList.add('active');
+      div.addEventListener('mousedown', e => { e.preventDefault(); input.value = sr; drop.classList.remove('open'); onSelect(); });
+      drop.appendChild(div);
+    });
+  }
+
+  function buildHzDropdown() {
+    const drop = document.getElementById('hzDrop'), input = document.getElementById('carrierHz');
+    drop.innerHTML = '';
+    const cur = parseInt(input.value);
+    HZ_PRESETS.forEach(hz => {
+      const div = document.createElement('div');
+      div.textContent = hz + ' Hz';
+      if (hz === cur) div.classList.add('active');
+      div.addEventListener('mousedown', e => { e.preventDefault(); input.value = hz; drop.classList.remove('open'); updateCpmDefaults('sampleRate','mode','cpm','cpmMax'); });
+      drop.appendChild(div);
+    });
+  }
+
+  function toggleDropdown(dropId) {
+    const drop = document.getElementById(dropId);
+    if (dropId === 'hzDrop') { buildHzDropdown(); }
+    else {
+      const isEnc = dropId === 'srDrop';
+      buildDropdown(dropId, isEnc ? 'sampleRate' : 'decSampleRate',
+        isEnc ? () => updateCpmDefaults('sampleRate','mode','cpm','cpmMax')
+              : () => updateCpmDefaults('decSampleRate','decMode','decCpm','decCpmMax'));
     }
+    drop.classList.toggle('open');
+  }
 
-    // ── Sample rate combobox ──────────────────────────────────────────────────
-    const SR_PRESETS = [8000, 16000, 22050, 32000, 44100, 48000, 96000, 192000];
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.sr-wrap')) document.querySelectorAll('.sr-dropdown').forEach(d => d.classList.remove('open'));
+  });
 
-    function buildDropdown(dropId, inputId, onSelect) {
-      const drop  = document.getElementById(dropId);
-      const input = document.getElementById(inputId);
-      drop.innerHTML = '';
-      const cur = parseInt(input.value);
-      SR_PRESETS.forEach(sr => {
-        const div = document.createElement('div');
-        div.textContent = sr.toLocaleString();
-        if (sr === cur) div.classList.add('active');
-        div.addEventListener('mousedown', e => {
-          e.preventDefault();
-          input.value = sr;
-          drop.classList.remove('open');
-          onSelect();
-        });
-        drop.appendChild(div);
-      });
+  // ── CPM defaults ──────────────────────────────────────────────────────────
+  function maxCpm(sr, mode, hz) {
+    return mode === 'psk' ? Math.floor((hz * 60) / 8) : Math.floor((sr * 60) / 16);
+  }
+  function updateCpmDefaults(srId, modeId, cpmId, labelId) {
+    const sr = parseInt(document.getElementById(srId).value)||44100;
+    const mode = document.getElementById(modeId).value;
+    const hz = parseInt(document.getElementById('carrierHz').value)||1000;
+    const max = maxCpm(sr, mode, hz);
+    const inp = document.getElementById(cpmId);
+    inp.max = max; inp.value = max;
+    document.getElementById(labelId).textContent = '(max ' + max.toLocaleString() + ')';
+  }
+  function updateHzVisibility() {
+    document.getElementById('hzRow').style.display = document.getElementById('mode').value === 'psk' ? '' : 'none';
+  }
+
+  document.getElementById('sampleRate').addEventListener('input', () => updateCpmDefaults('sampleRate','mode','cpm','cpmMax'));
+  document.getElementById('carrierHz').addEventListener('input', () => updateCpmDefaults('sampleRate','mode','cpm','cpmMax'));
+  document.getElementById('mode').addEventListener('change', () => { updateHzVisibility(); updateCpmDefaults('sampleRate','mode','cpm','cpmMax'); });
+  document.getElementById('decSampleRate').addEventListener('input', () => updateCpmDefaults('decSampleRate','decMode','decCpm','decCpmMax'));
+  document.getElementById('decMode').addEventListener('change', () => updateCpmDefaults('decSampleRate','decMode','decCpm','decCpmMax'));
+  updateHzVisibility();
+  updateCpmDefaults('sampleRate','mode','cpm','cpmMax');
+  updateCpmDefaults('decSampleRate','decMode','decCpm','decCpmMax');
+
+  // ── Decode source toggle ──────────────────────────────────────────────────
+  let decSource = 'file';
+  function setDecSource(src) {
+    decSource = src;
+    document.getElementById('fileSourceArea').style.display = src === 'file' ? '' : 'none';
+    document.getElementById('micSourceArea').style.display  = src === 'mic'  ? '' : 'none';
+    document.getElementById('decodeBtn').style.display      = src === 'file' ? '' : 'none';
+    document.getElementById('srcFileBtn').style.background  = src === 'file' ? '#2a3a2a' : '#333';
+    document.getElementById('srcFileBtn').style.color       = src === 'file' ? '#66bb6a' : '#eee';
+    document.getElementById('srcMicBtn').style.background   = src === 'mic'  ? '#2a3a2a' : '#333';
+    document.getElementById('srcMicBtn').style.color        = src === 'mic'  ? '#66bb6a' : '#eee';
+    if (src === 'file') stopMic();
+  }
+
+  // ── Metadata header format ────────────────────────────────────────────────
+  // MAGIC(8) + version(1) + type_len(1) + type(N) + name_len(1) + name(N) + payload_len(4) + width(2) + height(2) + crc8(1)
+  // MAGIC = 0xAB 0xCD 0xEF 0x54 0x58 0x44 0x41 0x54  ("TXDAT" with preamble)
+  const MAGIC = [0xAB, 0xCD, 0xEF, 0x54, 0x58, 0x44, 0x41, 0x54];
+  const HDR_VERSION = 1;
+
+  function crc8(bytes) {
+    let crc = 0;
+    for (const b of bytes) { crc ^= b; for (let i = 0; i < 8; i++) crc = (crc & 0x80) ? ((crc << 1) ^ 0x07) & 0xFF : (crc << 1) & 0xFF; }
+    return crc;
+  }
+
+  function buildHeader(mimeType, fileName, payloadLen, imgW, imgH) {
+    const te = new TextEncoder();
+    const typeBytes = te.encode(mimeType.slice(0, 255));
+    const nameBytes = te.encode(fileName.slice(0, 255));
+    const hdr = [];
+    MAGIC.forEach(b => hdr.push(b));
+    hdr.push(HDR_VERSION);
+    hdr.push(typeBytes.length); typeBytes.forEach(b => hdr.push(b));
+    hdr.push(nameBytes.length); nameBytes.forEach(b => hdr.push(b));
+    hdr.push((payloadLen >> 24) & 0xFF, (payloadLen >> 16) & 0xFF, (payloadLen >> 8) & 0xFF, payloadLen & 0xFF);
+    hdr.push((imgW >> 8) & 0xFF, imgW & 0xFF);
+    hdr.push((imgH >> 8) & 0xFF, imgH & 0xFF);
+    hdr.push(crc8(hdr));
+    return new Uint8Array(hdr);
+  }
+
+  function parseHeader(bytes) {
+    // Search for magic
+    let start = -1;
+    outer: for (let i = 0; i <= bytes.length - MAGIC.length; i++) {
+      for (let j = 0; j < MAGIC.length; j++) if (bytes[i+j] !== MAGIC[j]) continue outer;
+      start = i; break;
     }
+    if (start < 0) return null;
+    let p = start + MAGIC.length;
+    if (p >= bytes.length) return null;
+    const version = bytes[p++];
+    const typeLen = bytes[p++]; const mimeType = new TextDecoder().decode(bytes.slice(p, p+typeLen)); p += typeLen;
+    const nameLen = bytes[p++]; const fileName  = new TextDecoder().decode(bytes.slice(p, p+nameLen)); p += nameLen;
+    const payloadLen = (bytes[p]<<24)|(bytes[p+1]<<16)|(bytes[p+2]<<8)|bytes[p+3]; p += 4;
+    const imgW = (bytes[p]<<8)|bytes[p+1]; p += 2;
+    const imgH = (bytes[p]<<8)|bytes[p+1]; p += 2;
+    const storedCrc = bytes[p]; p++;
+    const computedCrc = crc8(bytes.slice(start, p-1));
+    if (storedCrc !== computedCrc) return null;
+    return { mimeType, fileName, payloadLen, imgW, imgH, dataOffset: p, headerStart: start };
+  }
 
-    function toggleDropdown(dropId) {
-      const drop = document.getElementById(dropId);
-      if (dropId === 'hzDrop') {
-        buildHzDropdown();
+  function mimeFromFilename(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const map = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif',
+                  bmp:'image/bmp', webp:'image/webp', mp3:'audio/mpeg', wav:'audio/wav',
+                  mp4:'video/mp4', pdf:'application/pdf', txt:'text/plain',
+                  json:'application/json', zip:'application/zip' };
+    return map[ext] || 'application/octet-stream';
+  }
+
+  // ── Canvas renderer — works for both raw-rgba and bmp, renders whatever bytes arrived ──
+  function renderPayloadToCanvas(ctx, meta, payload, imgData) {
+    const w = meta.imgW, h = meta.imgH;
+    const mime = meta.mimeType;
+
+    if (mime === 'image/raw-rgba') {
+      const id = imgData || ctx.createImageData(w, h);
+      const len = Math.min(payload.length, id.data.length);
+      for (let i = 0; i < len; i++) id.data[i] = payload[i];
+      ctx.putImageData(id, 0, 0);
+      return id;
+
+    } else if (mime === 'image/bmp') {
+      const id = imgData || ctx.createImageData(w, h);
+      const rowBytes = Math.ceil(w * 3 / 4) * 4;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const ps = 54 + y * rowBytes + x * 3;
+          if (ps + 2 >= payload.length) break;
+          const dst = (y * w + x) * 4;
+          id.data[dst+0] = payload[ps+2]; // R
+          id.data[dst+1] = payload[ps+1]; // G
+          id.data[dst+2] = payload[ps+0]; // B
+          id.data[dst+3] = 255;
+        }
+      }
+      ctx.putImageData(id, 0, 0);
+      return id;
+
+    } else {
+      // Compressed format (JPEG, PNG, WebP, GIF…)
+      // Feed partial bytes to browser decoder — whatever it can render, draw it
+      // Keep previous frame on canvas if decode fails (gets less glitchy over time)
+      const blob = new Blob([payload], { type: mime });
+      createImageBitmap(blob).then(bitmap => {
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        bitmap.close();
+      }).catch(() => {}); // silently keep last good frame
+      return imgData || null;
+    }
+  }
+
+  // ── Shared state ──────────────────────────────────────────────────────────
+  let audioBuffer, context, source, audioReady = false;
+  let uploadedBytes = null, uploadedMime = 'application/octet-stream', uploadedName = 'file';
+  let uploadedBinary = null;
+  let gpuDevice = null;
+
+  // ── File upload ───────────────────────────────────────────────────────────
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput  = document.getElementById('fileInput');
+  const fileInfo   = document.getElementById('fileInfo');
+
+  fileInput.addEventListener('change', function() { if (this.files && this.files[0]) handleFile(this.files[0]); });
+  uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+  uploadArea.addEventListener('dragleave', ()  => uploadArea.classList.remove('drag-over'));
+  uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('drag-over'); if (e.dataTransfer.files&&e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  function handleFile(file) {
+    fileInfo.textContent = 'Loading "' + file.name + '" (' + file.size + ' bytes)...';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const bytes = new Uint8Array(e.target.result);
+      uploadedBytes = bytes;
+      uploadedMime  = file.type || mimeFromFilename(file.name);
+      uploadedName  = file.name;
+
+      // Detect if image — offer raw RGB option for live preview
+      const isImg = uploadedMime.startsWith('image/');
+      if (isImg) {
+        document.getElementById('imgFmtToggle').style.display = 'block';
+        encodeImageFile(file);
       } else {
-        const isEnc = dropId === 'srDrop';
-        buildDropdown(dropId, isEnc ? 'sampleRate' : 'decSampleRate',
-          isEnc
-            ? () => updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax')
-            : () => updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax')
-        );
+        document.getElementById('imgFmtToggle').style.display = 'none';
+        const hdr = buildHeader(uploadedMime, uploadedName, bytes.length, 0, 0);
+        const full = new Uint8Array(hdr.length + bytes.length);
+        full.set(hdr); full.set(bytes, hdr.length);
+        uploadedBinary = Array.from(full).map(b => b.toString(2).padStart(8,'0')).join('');
+        fileInfo.textContent = '\u2713 "' + file.name + '" \u2014 ' + bytes.length + ' bytes';
+        showEncMeta(uploadedMime, uploadedName, bytes.length, 0, 0);
       }
-      drop.classList.toggle('open');
+      document.getElementById('text').value = '';
+      document.getElementById('statusMessage').textContent = 'File loaded with metadata header. Click Encode.';
+    };
+    reader.onerror = () => { fileInfo.textContent = '\u2717 Failed to read file.'; uploadedBinary = null; };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function showEncMeta(mime, name, len, w, h) {
+    const box = document.getElementById('metaBox');
+    box.style.display = 'block';
+    box.innerHTML = 'Header \u2014 type: <span>' + mime + '</span> &nbsp; name: <span>' + name + '</span> &nbsp; size: <span>' + len.toLocaleString() + ' B</span>' + (w ? ' &nbsp; dims: <span>' + w + '\xd7' + h + '</span>' : '');
+  }
+
+  document.getElementById('text').addEventListener('input', function() {
+    if (this.value.trim()) {
+      uploadedBinary = null; uploadedBytes = null;
+      fileInfo.textContent = '';
+      document.getElementById('metaBox').style.display = 'none';
+      document.getElementById('uploadLabel').textContent = 'Click to choose a file, or drag & drop here';
+      fileInput.value = '';
     }
+  });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.sr-wrap')) {
-        document.querySelectorAll('.sr-dropdown').forEach(d => d.classList.remove('open'));
+  function textToBinary(text) { return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8,'0')).join(''); }
+
+  // Build a 24-bit BMP from raw RGB data (strips alpha channel)
+  function buildBmp(rgbaData, w, h) {
+    const rowBytes = Math.ceil(w * 3 / 4) * 4; // rows padded to 4 bytes
+    const pixDataSize = rowBytes * h;
+    const fileSize = 54 + pixDataSize;
+    const buf = new ArrayBuffer(fileSize);
+    const dv  = new DataView(buf);
+    // File header
+    dv.setUint8(0, 0x42); dv.setUint8(1, 0x4D); // 'BM'
+    dv.setUint32(2, fileSize, true);
+    dv.setUint32(6, 0, true);
+    dv.setUint32(10, 54, true); // pixel data offset
+    // DIB header (BITMAPINFOHEADER)
+    dv.setUint32(14, 40, true);   // header size
+    dv.setInt32(18, w, true);
+    dv.setInt32(22, -h, true);    // negative = top-down
+    dv.setUint16(26, 1, true);    // color planes
+    dv.setUint16(28, 24, true);   // bits per pixel
+    dv.setUint32(30, 0, true);    // no compression
+    dv.setUint32(34, pixDataSize, true);
+    dv.setUint32(38, 2835, true); dv.setUint32(42, 2835, true); // ~72 DPI
+    dv.setUint32(46, 0, true); dv.setUint32(50, 0, true);
+    // Pixel data (BGR order, rows padded)
+    let p = 54;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const s = (y * w + x) * 4;
+        dv.setUint8(p++, rgbaData[s+2]); // B
+        dv.setUint8(p++, rgbaData[s+1]); // G
+        dv.setUint8(p++, rgbaData[s+0]); // R
       }
-    });
+      // Pad row to 4-byte boundary
+      const pad = rowBytes - w * 3;
+      for (let i = 0; i < pad; i++) dv.setUint8(p++, 0);
+    }
+    return new Uint8Array(buf);
+  }
 
-    // ── Shared state ──────────────────────────────────────────────────────────
-    let audioBuffer, context, source, audioReady = false;
-    let uploadedBinary = null;
-    let gpuDevice = null;
+  function encodeImageFile(file) {
+    // Show orig format label
+    document.getElementById('origFmtLabel').textContent = (file.type || mimeFromFilename(file.name)).split('/')[1] || 'original';
 
-    // ── File upload ───────────────────────────────────────────────────────────
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput  = document.getElementById('fileInput');
-    const fileInfo   = document.getElementById('fileInfo');
-
-    fileInput.addEventListener('change', function() {
-      if (this.files && this.files[0]) handleFile(this.files[0]);
-    });
-    uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
-    uploadArea.addEventListener('dragleave', ()  => uploadArea.classList.remove('drag-over'));
-    uploadArea.addEventListener('drop', e => {
-      e.preventDefault(); uploadArea.classList.remove('drag-over');
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-    });
-
-    function handleFile(file) {
-      fileInfo.textContent = 'Loading "' + file.name + '" (' + file.size + ' bytes)...';
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const bytes = new Uint8Array(e.target.result);
-        uploadedBinary = Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join('');
-        fileInfo.textContent = '\u2713 "' + file.name + '" \u2014 ' + bytes.length + ' bytes loaded.';
-        document.getElementById('uploadLabel').textContent = file.name;
-        document.getElementById('text').value = '';
-        document.getElementById('statusMessage').textContent = 'File loaded. Click Encode to proceed.';
+    const reader = new FileReader();
+    reader.onload = function(re) {
+      const origBytes = new Uint8Array(re.target.result);
+      const origMime  = file.type || mimeFromFilename(file.name);
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const offscreen = document.createElement('canvas');
+        offscreen.width = w; offscreen.height = h;
+        const ctx = offscreen.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const rgba = ctx.getImageData(0, 0, w, h).data;
+        URL.revokeObjectURL(url);
+        doEncodeImage(rgba, w, h, file.name, origBytes, origMime);
+        // Re-encode when format radio changes
+        document.querySelectorAll('input[name="imgFmt"]').forEach(r => {
+          r.onchange = () => doEncodeImage(rgba, w, h, file.name, origBytes, origMime);
+        });
       };
-      reader.onerror = () => { fileInfo.textContent = '\u2717 Failed to read file.'; uploadedBinary = null; };
-      reader.readAsArrayBuffer(file);
+      img.src = url;
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function doEncodeImage(rgba, w, h, origName) {
+    const useBmp = document.getElementById('useBmp').checked;
+    let payload, mime, name, label;
+    if (useBmp) {
+      payload = buildBmp(rgba, w, h);
+      mime  = 'image/bmp';
+      name  = origName.replace(/\.[^.]+$/, '') + '.bmp';
+      label = 'BMP (' + payload.length.toLocaleString() + ' B)';
+    } else {
+      payload = new Uint8Array(rgba.buffer);
+      mime  = 'image/raw-rgba';
+      name  = origName;
+      label = 'raw RGBA (' + payload.length.toLocaleString() + ' B)';
     }
+    uploadedBytes = payload;
+    uploadedMime  = mime;
+    uploadedName  = name;
+    const hdr  = buildHeader(mime, name, payload.length, w, h);
+    const full = new Uint8Array(hdr.length + payload.length);
+    full.set(hdr); full.set(payload, hdr.length);
+    uploadedBinary = Array.from(full).map(b => b.toString(2).padStart(8,'0')).join('');
+    fileInfo.textContent = '✓ "' + origName + '" — ' + w + '×' + h + ' — ' + label;
+    showEncMeta(mime, name, payload.length, w, h);
+    document.getElementById('statusMessage').textContent = 'Image loaded. Click Encode.';
+  }
 
-    document.getElementById('text').addEventListener('input', function() {
-      if (this.value.trim()) {
-        uploadedBinary = null;
-        fileInfo.textContent = '';
-        document.getElementById('uploadLabel').textContent = 'Click to choose a file, or drag & drop here';
-        fileInput.value = '';
-      }
-    });
+  // ── WebGPU ────────────────────────────────────────────────────────────────
+  async function getGPU() {
+    if (gpuDevice) return gpuDevice;
+    if (!navigator.gpu) return null;
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) return null;
+      gpuDevice = await adapter.requestDevice();
+      return gpuDevice;
+    } catch(e) { return null; }
+  }
 
-    function textToBinary(text) {
-      return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
-    }
+  function setAccelBadge(usedGPU) {
+    document.getElementById('accelBadge').textContent = usedGPU ? 'Accelerated' : '';
+  }
 
-    // ── CPM defaults ──────────────────────────────────────────────────────────
-    function maxCpm(sampleRate, mode, freqHz) {
-      if (mode === 'psk') {
-        // need >= 1 full cycle per bit: spb >= sr/freq => cpm <= freq*60/8
-        return Math.floor((freqHz * 60) / 8);
-      }
-      return Math.floor((sampleRate * 60) / 16);
-    }
+  // ── Encoder ───────────────────────────────────────────────────────────────
+  async function encodeAudio() {
+    const text       = document.getElementById('text').value.trim();
+    const cpm        = parseInt(document.getElementById('cpm').value);
+    const mode       = document.getElementById('mode').value;
+    const sampleRate = parseInt(document.getElementById('sampleRate').value);
+    const statusElem = document.getElementById('statusMessage');
+    const isPSK      = mode === 'psk';
 
-    function updateCpmDefaults(srId, modeId, cpmId, labelId) {
-      const sr   = parseInt(document.getElementById(srId).value) || 44100;
-      const mode = document.getElementById(modeId).value;
-      const hz   = parseInt(document.getElementById('carrierHz').value) || 1000;
-      const max  = maxCpm(sr, mode, hz);
-      const inp  = document.getElementById(cpmId);
-      inp.max   = max;
-      inp.value = max;
-      document.getElementById(labelId).textContent = '(max ' + max.toLocaleString() + ')';
-    }
-
-    const HZ_PRESETS = [100, 200, 300, 400, 500, 700, 1000, 1200, 1500, 2000, 2500, 3000];
-
-    function buildHzDropdown() {
-      const drop  = document.getElementById('hzDrop');
-      const input = document.getElementById('carrierHz');
-      drop.innerHTML = '';
-      const cur = parseInt(input.value);
-      HZ_PRESETS.forEach(hz => {
-        const div = document.createElement('div');
-        div.textContent = hz + ' Hz';
-        if (hz === cur) div.classList.add('active');
-        div.addEventListener('mousedown', e => {
-          e.preventDefault();
-          input.value = hz;
-          drop.classList.remove('open');
-          updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax');
-        });
-        drop.appendChild(div);
-      });
-    }
-
-    function updateHzVisibility() {
-      const isPSK = document.getElementById('mode').value === 'psk';
-      document.getElementById('hzRow').style.display = isPSK ? '' : 'none';
-    }
-
-    document.getElementById('sampleRate').addEventListener('input', () =>
-      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
-    document.getElementById('carrierHz').addEventListener('input', () =>
-      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax'));
-    document.getElementById('mode').addEventListener('change', () => {
-      updateHzVisibility();
-      updateCpmDefaults('sampleRate', 'mode', 'cpm', 'cpmMax');
-    });
-    document.getElementById('decSampleRate').addEventListener('input', () =>
-      updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
-    document.getElementById('decMode').addEventListener('change', () =>
-      updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax'));
-
-    updateHzVisibility();
-    updateCpmDefaults('sampleRate',    'mode',    'cpm',    'cpmMax');
-    updateCpmDefaults('decSampleRate', 'decMode', 'decCpm', 'decCpmMax');
-
-    // ── WebGPU ────────────────────────────────────────────────────────────────
-    async function getGPU() {
-      if (gpuDevice) return gpuDevice;
-      if (!navigator.gpu) return null;
-      try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) return null;
-        gpuDevice = await adapter.requestDevice();
-        return gpuDevice;
-      } catch(e) { return null; }
-    }
-
-    // ── Encoder ───────────────────────────────────────────────────────────────
-    async function encodeAudio() {
-      const text       = document.getElementById('text').value.trim();
-      const cpm        = parseInt(document.getElementById('cpm').value);
-      const mode       = document.getElementById('mode').value;
-      const sampleRate = parseInt(document.getElementById('sampleRate').value);
-      const statusElem = document.getElementById('statusMessage');
-
-      let binary, sourceLabel;
-      if (uploadedBinary) {
-        binary = uploadedBinary; sourceLabel = 'File encoded as binary.';
-      } else if (!text) {
-        alert('Please enter text or upload a file.');
-        audioReady = false; statusElem.textContent = ''; return;
+    let binary, sourceLabel;
+    if (uploadedBinary) {
+      binary = uploadedBinary; sourceLabel = 'File + metadata header encoded.';
+    } else if (!text) {
+      alert('Please enter text or upload a file.'); audioReady = false; statusElem.textContent = ''; return;
+    } else {
+      const isBin = /^[01]+$/.test(text);
+      if (isBin) {
+        binary = text; sourceLabel = 'Using raw binary input.';
       } else {
-        const isBin = /^[01]+$/.test(text);
-        binary = isBin ? text : textToBinary(text);
-        sourceLabel = isBin ? 'Using raw binary input.' : 'Text converted to binary.';
+        // Wrap plain text with metadata header
+        const te = new TextEncoder(); const tb = te.encode(text);
+        const hdr = buildHeader('text/plain', 'message.txt', tb.length, 0, 0);
+        const full = new Uint8Array(hdr.length + tb.length); full.set(hdr); full.set(tb, hdr.length);
+        binary = Array.from(full).map(b => b.toString(2).padStart(8,'0')).join('');
+        sourceLabel = 'Text + metadata header encoded.';
+        showEncMeta('text/plain','message.txt', tb.length, 0, 0);
       }
+    }
 
-      const MAX_DISP = 1024 * 8;
-      const disTrunc = binary.length > MAX_DISP;
-      document.getElementById('output').value = disTrunc ? binary.slice(0, MAX_DISP) + '\u2026' : binary;
-      statusElem.textContent = 'Encoding\u2026';
+    const MAX_DISP = 1024 * 8;
+    const disTrunc = binary.length > MAX_DISP;
+    document.getElementById('output').value = disTrunc ? binary.slice(0, MAX_DISP) + '\u2026' : binary;
+    statusElem.textContent = 'Encoding\u2026';
 
-      const bitDuration   = 60 / (cpm * 8);
-      const samplesPerBit = Math.floor(bitDuration * sampleRate);
-      const totalSamples  = Math.floor(bitDuration * binary.length * sampleRate);
-      const frequency     = (isPSK ? (parseInt(document.getElementById('carrierHz').value) || 1000) : 1000);
-      const isPSK         = mode === 'psk';
+    const bitDuration   = 60 / (cpm * 8);
+    const samplesPerBit = Math.floor(bitDuration * sampleRate);
+    const totalSamples  = Math.floor(bitDuration * binary.length * sampleRate);
+    const frequency     = isPSK ? (parseInt(document.getElementById('carrierHz').value)||1000) : 1000;
 
-      const bits = new Uint32Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bits[i] = binary.charCodeAt(i) === 49 ? 1 : 0;
+    const bits = new Uint32Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bits[i] = binary.charCodeAt(i) === 49 ? 1 : 0;
 
-      let samples = null, gpuUsed = false;
-      const dev = await getGPU();
+    let samples = null, gpuUsed = false;
+    const dev = await getGPU();
 
-      if (dev) {
-        try {
-          const bitsGPU = dev.createBuffer({ size: bits.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-          dev.queue.writeBuffer(bitsGPU, 0, bits);
-          const outGPU  = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-          const readGPU = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
-          const uni = new Float32Array([frequency, sampleRate, samplesPerBit, isPSK ? 1.0 : 0.0]);
-          const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-          dev.queue.writeBuffer(uniGPU, 0, uni);
+    if (dev) {
+      try {
+        const bitsGPU = dev.createBuffer({ size: bits.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+        dev.queue.writeBuffer(bitsGPU, 0, bits);
+        const outGPU  = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const readGPU = dev.createBuffer({ size: totalSamples * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+        const uni = new Float32Array([frequency, sampleRate, samplesPerBit, isPSK ? 1.0 : 0.0]);
+        const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        dev.queue.writeBuffer(uniGPU, 0, uni);
+        const mod = dev.createShaderModule({ code: `
+          @group(0) @binding(0) var<storage, read>       bits   : array<u32>;
+          @group(0) @binding(1) var<storage, read_write> output : array<f32>;
+          @group(0) @binding(2) var<uniform>             params : vec4<f32>;
+          const TAU: f32 = 6.28318530717958; const PI: f32 = 3.14159265358979;
+          @compute @workgroup_size(256)
+          fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+            let idx = gid.x; if (idx >= arrayLength(&output)) { return; }
+            let bit = bits[idx / u32(params.z)];
+            if (params.w > 0.5) { output[idx] = sin(TAU * params.x * (f32(idx) / params.y) + select(PI, 0.0, bit == 1u)) * 0.5; }
+            else { output[idx] = select(-0.5, 0.5, bit == 1u); }
+          }` });
+        const pipeline = dev.createComputePipeline({ layout:'auto', compute:{module:mod,entryPoint:'main'} });
+        const bg = dev.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [
+          {binding:0,resource:{buffer:bitsGPU}},{binding:1,resource:{buffer:outGPU}},{binding:2,resource:{buffer:uniGPU}}
+        ]});
+        const enc = dev.createCommandEncoder(); const pass = enc.beginComputePass();
+        pass.setPipeline(pipeline); pass.setBindGroup(0, bg);
+        pass.dispatchWorkgroups(Math.ceil(totalSamples / 256)); pass.end();
+        enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalSamples * 4);
+        dev.queue.submit([enc.finish()]);
+        await readGPU.mapAsync(GPUMapMode.READ);
+        samples = new Float32Array(readGPU.getMappedRange().slice(0)); readGPU.unmap();
+        gpuUsed = true;
+      } catch(e) { console.warn('WebGPU encode failed:', e); samples = null; }
+    }
 
-          const mod = dev.createShaderModule({ code: `
-            @group(0) @binding(0) var<storage, read>       bits   : array<u32>;
-            @group(0) @binding(1) var<storage, read_write> output : array<f32>;
-            @group(0) @binding(2) var<uniform>             params : vec4<f32>;
-            const TAU: f32 = 6.28318530717958;
-            const PI:  f32 = 3.14159265358979;
-            @compute @workgroup_size(256)
-            fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-              let idx = gid.x;
-              if (idx >= arrayLength(&output)) { return; }
-              let bitIdx = idx / u32(params.z);
-              let bit    = bits[bitIdx];
-              if (params.w > 0.5) {
-                let phase = select(PI, 0.0, bit == 1u);
-                output[idx] = sin(TAU * params.x * (f32(idx) / params.y) + phase) * 0.5;
-              } else {
-                output[idx] = select(-0.5, 0.5, bit == 1u);
+    if (!samples) {
+      samples = new Float32Array(totalSamples);
+      for (let i = 0; i < binary.length; i++) {
+        const bit = binary[i];
+        const s = Math.floor(i * bitDuration * sampleRate), e2 = Math.floor((i+1) * bitDuration * sampleRate);
+        for (let j = s; j < e2; j++) {
+          if (isPSK) samples[j] = Math.sin(2*Math.PI*frequency*(j/sampleRate)+(bit==='0'?Math.PI:0))*0.5;
+          else samples[j] = bit==='0' ? -0.5 : 0.5;
+        }
+      }
+    }
+
+    context = new (window.AudioContext||window.webkitAudioContext)({ sampleRate });
+    audioBuffer = context.createBuffer(1, totalSamples, sampleRate);
+    audioBuffer.getChannelData(0).set(samples);
+    audioReady = true;
+    setAccelBadge(gpuUsed);
+    statusElem.textContent = sourceLabel + (disTrunc ? ' (display truncated to 1024 B)' : '');
+  }
+
+  function playAudio() {
+    if (!audioReady||!audioBuffer) { alert('Encode something first.'); return; }
+    stopAudio();
+    source = context.createBufferSource(); source.buffer = audioBuffer;
+    source.connect(context.destination); source.start();
+  }
+  function stopAudio() { if (source) { try{source.stop();}catch(e){} source.disconnect(); source=null; } }
+  function downloadAudio() {
+    if (!audioReady||!audioBuffer) { alert('Encode something first!'); return; }
+    const blob = bufferToWav(audioBuffer), url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='encoded_audio.wav';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function bufferToWav(buf) {
+    const nc=buf.numberOfChannels, sr=buf.sampleRate, ab=new ArrayBuffer(buf.length*nc*2+44), dv=new DataView(ab), ch=[];
+    let o=0; const ws=s=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+    ws('RIFF');o+=4;dv.setUint32(o,36+buf.length*nc*2,true);o+=4;ws('WAVE');o+=4;ws('fmt ');o+=4;
+    dv.setUint32(o,16,true);o+=4;dv.setUint16(o,1,true);o+=2;dv.setUint16(o,nc,true);o+=2;
+    dv.setUint32(o,sr,true);o+=4;dv.setUint32(o,sr*nc*2,true);o+=4;dv.setUint16(o,nc*2,true);o+=2;dv.setUint16(o,16,true);o+=2;
+    ws('data');o+=4;dv.setUint32(o,buf.length*nc*2,true);o+=4;
+    for(let i=0;i<nc;i++)ch.push(buf.getChannelData(i));
+    for(let i=0;i<buf.length;i++)for(let c=0;c<nc;c++){dv.setInt16(o,Math.max(-1,Math.min(1,ch[c][i]))*0x7FFF,true);o+=2;}
+    return new Blob([ab],{type:'audio/wav'});
+  }
+
+  // ── Shared decode logic ───────────────────────────────────────────────────
+  function bitsToBytes(binary) {
+    const out = [];
+    for (let i = 0; i < binary.length; i += 8) {
+      const byte = binary.slice(i, i+8);
+      if (byte.length === 8) out.push(parseInt(byte, 2));
+    }
+    return new Uint8Array(out);
+  }
+
+  function processDecodedBits(binary, statusElem) {
+    document.getElementById('binaryOutput').value = binary;
+    const bytes = bitsToBytes(binary);
+    const meta  = parseHeader(bytes);
+
+    const metaBox = document.getElementById('decMetaBox');
+    const canvas  = document.getElementById('liveCanvas');
+
+    if (meta) {
+      metaBox.style.display = 'block';
+      const sizeInfo = meta.imgW ? ' dims: <span>' + meta.imgW + '\xd7' + meta.imgH + '</span>' : '';
+      metaBox.innerHTML = 'Received \u2014 type: <span>' + meta.mimeType + '</span> &nbsp; name: <span>' + meta.fileName + '</span> &nbsp; size: <span>' + meta.payloadLen.toLocaleString() + ' B</span>' + sizeInfo;
+
+      const payload = bytes.slice(meta.dataOffset, meta.dataOffset + meta.payloadLen);
+
+      if ((meta.mimeType === 'image/raw-rgba' || meta.mimeType === 'image/bmp') && meta.imgW && meta.imgH) {
+        canvas.style.display = 'block';
+        canvas.width  = meta.imgW;
+        canvas.height = meta.imgH;
+        const ctx = canvas.getContext('2d');
+        renderPayloadToCanvas(ctx, meta, payload);
+        document.getElementById('textOutput').value = '[Image rendered above]';
+      } else if (meta.mimeType.startsWith('text/')) {
+        canvas.style.display = 'none';
+        document.getElementById('textOutput').value = new TextDecoder().decode(payload);
+      } else {
+        canvas.style.display = 'none';
+        // Offer download
+        const blob = new Blob([payload], { type: meta.mimeType });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = meta.fileName; a.textContent = 'Download ' + meta.fileName;
+        a.style.cssText = 'display:block;margin-top:8px;color:#66bb6a;font-size:0.9em;';
+        const existing = document.getElementById('decDownloadLink');
+        if (existing) existing.remove();
+        a.id = 'decDownloadLink';
+        document.getElementById('decMetaBox').after(a);
+        document.getElementById('textOutput').value = '[Binary file \u2014 click download link above]';
+      }
+    } else {
+      metaBox.style.display = 'none'; canvas.style.display = 'none';
+      // No header — plain text attempt
+      let text = '';
+      for (let i = 0; i < binary.length; i += 8) {
+        const b = binary.slice(i, i+8);
+        if (b.length === 8) { const c = parseInt(b,2); text += (c>=32&&c<=126)?String.fromCharCode(c):'.'; }
+      }
+      document.getElementById('textOutput').value = text;
+    }
+  }
+
+  async function decodeSamples(data, spb, isPSK, statusElem) {
+    const totalBits = Math.floor(data.length / spb);
+    let bitArr = null, gpuUsed = false;
+    const dev = await getGPU();
+
+    if (dev) {
+      try {
+        const samplesGPU = dev.createBuffer({ size: data.byteLength, usage: GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST });
+        dev.queue.writeBuffer(samplesGPU, 0, data);
+        const outGPU  = dev.createBuffer({ size: totalBits*4, usage: GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC });
+        const readGPU = dev.createBuffer({ size: totalBits*4, usage: GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST });
+        const uni = new Uint32Array([spb, isPSK?1:0, totalBits, 0]);
+        const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST });
+        dev.queue.writeBuffer(uniGPU, 0, uni);
+        const mod = dev.createShaderModule({ code: `
+          @group(0) @binding(0) var<storage, read>       samples : array<f32>;
+          @group(0) @binding(1) var<storage, read_write> output  : array<u32>;
+          @group(0) @binding(2) var<uniform>             params  : vec4<u32>;
+          @compute @workgroup_size(256)
+          fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+            let bi = gid.x; if (bi >= params.z) { return; }
+            let start = bi*params.x; let end = start+params.x;
+            var sum: f32=0.0; var pos: u32=0u; var neg: u32=0u;
+            for (var j=start; j<end; j++) { let s=samples[j]; sum+=s; if(s>0.0){pos++;}else{neg++;} }
+            if (params.y==0u) { output[bi]=select(0u,1u,sum>0.0); } else { output[bi]=select(0u,1u,pos>neg); }
+          }` });
+        const pipeline = dev.createComputePipeline({layout:'auto',compute:{module:mod,entryPoint:'main'}});
+        const bg = dev.createBindGroup({ layout:pipeline.getBindGroupLayout(0), entries:[
+          {binding:0,resource:{buffer:samplesGPU}},{binding:1,resource:{buffer:outGPU}},{binding:2,resource:{buffer:uniGPU}}
+        ]});
+        const enc=dev.createCommandEncoder(), pass=enc.beginComputePass();
+        pass.setPipeline(pipeline); pass.setBindGroup(0,bg);
+        pass.dispatchWorkgroups(Math.ceil(totalBits/256)); pass.end();
+        enc.copyBufferToBuffer(outGPU,0,readGPU,0,totalBits*4);
+        dev.queue.submit([enc.finish()]);
+        await readGPU.mapAsync(GPUMapMode.READ);
+        bitArr = new Uint32Array(readGPU.getMappedRange().slice(0)); readGPU.unmap();
+        gpuUsed = true;
+      } catch(e) { console.warn('WebGPU decode failed:',e); bitArr=null; }
+    }
+
+    let binary = '';
+    if (bitArr) {
+      binary = Array.from(bitArr).join('');
+    } else {
+      for (let i=0;i<totalBits;i++) {
+        const s=i*spb, e2=s+spb;
+        if (!isPSK) { let sum=0; for(let j=s;j<e2;j++)sum+=data[j]; binary+=sum>0?'1':'0'; }
+        else { let pos=0,neg=0; for(let j=s;j<e2;j++){if(data[j]>0)pos++;else neg++;} binary+=pos>neg?'1':'0'; }
+      }
+    }
+    return { binary, gpuUsed };
+  }
+
+  // ── File decoder ──────────────────────────────────────────────────────────
+  async function decodeAudio() {
+    const fileEl = document.getElementById('audioFile');
+    if (!fileEl.files[0]) { alert('Select an audio file first!'); return; }
+    const mode       = document.getElementById('decMode').value;
+    const sampleRate = parseInt(document.getElementById('decSampleRate').value);
+    const cpm        = parseInt(document.getElementById('decCpm').value);
+    const spb        = Math.floor((60/(cpm*8))*sampleRate);
+    const statusElem = document.getElementById('statusMessageDec');
+    const isPSK      = mode === 'psk';
+    statusElem.textContent = 'Decoding\u2026';
+
+    const arrayBuf = await fileEl.files[0].arrayBuffer();
+    const decCtx   = new (window.AudioContext||window.webkitAudioContext)({ sampleRate });
+    decCtx.decodeAudioData(arrayBuf, async function(audioBuf) {
+      const data = audioBuf.getChannelData(0);
+      const { binary, gpuUsed } = await decodeSamples(data, spb, isPSK, statusElem);
+      processDecodedBits(binary, statusElem);
+      statusElem.textContent = 'Decoded ' + Math.floor(data.length/spb) + ' bits.';
+    }, () => { alert('Unable to decode audio file.'); statusElem.textContent = ''; });
+  }
+
+  // ── Mic decoder ───────────────────────────────────────────────────────────
+  let micStream = null, micCtx = null, micProcessor = null;
+  let micBitBuffer = '';    // accumulated bits from mic
+  let micSampleBuffer = []; // raw samples accumulating toward spb
+  let micSynced = false;
+  let micSPB = 0;
+  const MIC_FLUSH_BITS = 8; // process every 8 bits
+
+  async function toggleMic() {
+    if (micStream) { stopMic(); return; }
+    const btn = document.getElementById('micBtn');
+    const mode       = document.getElementById('decMode').value;
+    const sampleRate = parseInt(document.getElementById('decSampleRate').value);
+    const cpm        = parseInt(document.getElementById('decCpm').value);
+    micSPB = Math.floor((60/(cpm*8))*sampleRate);
+    const isPSK = mode === 'psk';
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate, channelCount: 1 }, video: false });
+    } catch(e) { alert('Microphone access denied: ' + e.message); return; }
+
+    micCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate });
+    const source = micCtx.createMediaStreamSource(micStream);
+    micProcessor = micCtx.createScriptProcessor(4096, 1, 1);
+
+    micBitBuffer = '';
+    micSampleBuffer = [];
+    micSynced = false;
+    document.getElementById('binaryOutput').value = '';
+    document.getElementById('textOutput').value = '';
+    document.getElementById('decMetaBox').style.display = 'none';
+    document.getElementById('liveCanvas').style.display = 'none';
+
+    // Live image state for mic
+    let liveImgData = null, liveCtx = null, liveBytesWritten = 0, liveMeta = null;
+
+    micProcessor.onaudioprocess = function(e) {
+      const input = e.inputBuffer.getChannelData(0);
+      for (let s = 0; s < input.length; s++) {
+        micSampleBuffer.push(input[s]);
+        if (micSampleBuffer.length >= micSPB) {
+          const chunk = micSampleBuffer.splice(0, micSPB);
+          let bit;
+          if (!isPSK) {
+            let sum = 0; for (const v of chunk) sum += v;
+            bit = sum > 0 ? '1' : '0';
+          } else {
+            let pos = 0, neg = 0; for (const v of chunk) { if (v>0) pos++; else neg++; }
+            bit = pos > neg ? '1' : '0';
+          }
+          micBitBuffer += bit;
+
+          // Try to find magic header if not yet synced
+          if (!micSynced && micBitBuffer.length >= MAGIC.length * 8) {
+            const searchBytes = bitsToBytes(micBitBuffer);
+            const idx = findMagic(searchBytes);
+            if (idx >= 0) {
+              micSynced = true;
+              // Trim buffer to start of magic
+              micBitBuffer = micBitBuffer.slice(idx * 8);
+              document.getElementById('statusMessageDec').textContent = 'Synced! Receiving\u2026';
+            } else if (micBitBuffer.length > (MAGIC.length + 32) * 8) {
+              // slide window — drop oldest byte
+              micBitBuffer = micBitBuffer.slice(8);
+            }
+          }
+
+          // Update outputs periodically
+          if (micBitBuffer.length % (MIC_FLUSH_BITS * 8) === 0) {
+            const MAX_DISP = 1024*8;
+            document.getElementById('binaryOutput').value = micBitBuffer.length > MAX_DISP
+              ? micBitBuffer.slice(-MAX_DISP) : micBitBuffer;
+
+            if (micSynced) {
+              const bytes = bitsToBytes(micBitBuffer);
+              const meta  = parseHeader(bytes);
+              if (meta && (meta.mimeType === 'image/raw-rgba' || meta.mimeType === 'image/bmp') && meta.imgW && meta.imgH) {
+                const canvas = document.getElementById('liveCanvas');
+                if (!liveCtx) {
+                  canvas.style.display = 'block';
+                  canvas.width = meta.imgW; canvas.height = meta.imgH;
+                  liveCtx = canvas.getContext('2d');
+                  liveImgData = liveCtx.createImageData(meta.imgW, meta.imgH);
+                  liveMeta = meta; liveBytesWritten = 0;
+                }
+                const payload = bytes.slice(meta.dataOffset, meta.dataOffset + meta.payloadLen);
+                renderPayloadToCanvas(liveCtx, meta, payload, liveImgData);
+                liveBytesWritten = payload.length;
+              } else if (meta && meta.mimeType.startsWith('text/')) {
+                const payload = bytes.slice(meta.dataOffset, meta.dataOffset + meta.payloadLen);
+                document.getElementById('textOutput').value = new TextDecoder().decode(payload);
               }
             }
-          `});
-
-          const pipeline = dev.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
-          const bg = dev.createBindGroup({
-            layout: pipeline.getBindGroupLayout(0),
-            entries: [
-              { binding: 0, resource: { buffer: bitsGPU } },
-              { binding: 1, resource: { buffer: outGPU  } },
-              { binding: 2, resource: { buffer: uniGPU  } }
-            ]
-          });
-          const enc  = dev.createCommandEncoder();
-          const pass = enc.beginComputePass();
-          pass.setPipeline(pipeline); pass.setBindGroup(0, bg);
-          pass.dispatchWorkgroups(Math.ceil(totalSamples / 256));
-          pass.end();
-          enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalSamples * 4);
-          dev.queue.submit([enc.finish()]);
-          await readGPU.mapAsync(GPUMapMode.READ);
-          samples = new Float32Array(readGPU.getMappedRange().slice(0));
-          readGPU.unmap();
-          gpuUsed = true;
-        } catch(e) { console.warn('WebGPU encode failed:', e); samples = null; }
-      }
-
-      if (!samples) {
-        samples = new Float32Array(totalSamples);
-        for (let i = 0; i < binary.length; i++) {
-          const bit = binary[i];
-          const s   = Math.floor(i * bitDuration * sampleRate);
-          const e2  = Math.floor((i + 1) * bitDuration * sampleRate);
-          for (let j = s; j < e2; j++) {
-            if (isPSK) {
-              samples[j] = Math.sin(2 * Math.PI * frequency * (j / sampleRate) + (bit === '0' ? Math.PI : 0)) * 0.5;
-            } else {
-              samples[j] = bit === '0' ? -0.5 : 0.5;
-            }
           }
         }
       }
+    };
 
-      context     = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-      audioBuffer = context.createBuffer(1, totalSamples, sampleRate);
-      audioBuffer.getChannelData(0).set(samples);
-      audioReady  = true;
+    source.connect(micProcessor);
+    micProcessor.connect(micCtx.destination);
+    btn.textContent = '\u25a0 Stop Listening';
+    btn.classList.add('listening');
+    document.getElementById('statusMessageDec').textContent = 'Listening\u2026 waiting for sync';
+  }
 
-      statusElem.textContent = sourceLabel + (disTrunc ? ' (binary display truncated to 1024 bytes)' : '');
+  function stopMic() {
+    if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+    if (micCtx) { micCtx.close(); micCtx = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    const btn = document.getElementById('micBtn');
+    btn.textContent = '\u25cf Start Listening';
+    btn.classList.remove('listening');
+    // Final process of accumulated bits
+    if (micBitBuffer.length > 0) processDecodedBits(micBitBuffer, document.getElementById('statusMessageDec'));
+    document.getElementById('statusMessageDec').textContent = 'Stopped. ' + Math.floor(micBitBuffer.length/8) + ' bytes received.';
+  }
+
+  function findMagic(bytes) {
+    outer: for (let i = 0; i <= bytes.length - MAGIC.length; i++) {
+      for (let j = 0; j < MAGIC.length; j++) if (bytes[i+j] !== MAGIC[j]) continue outer;
+      return i;
     }
-
-    function playAudio() {
-      if (!audioReady || !audioBuffer) { alert('Encode something first.'); return; }
-      stopAudio();
-      source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(context.destination);
-      source.start();
-    }
-
-    function stopAudio() {
-      if (source) { try { source.stop(); } catch(e) {} source.disconnect(); source = null; }
-    }
-
-    function downloadAudio() {
-      if (!audioReady || !audioBuffer) { alert('Encode something first!'); return; }
-      const blob = bufferToWav(audioBuffer);
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = 'encoded_audio.wav';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-
-    function bufferToWav(buf) {
-      const nc = buf.numberOfChannels, sr = buf.sampleRate;
-      const ab = new ArrayBuffer(buf.length * nc * 2 + 44);
-      const dv = new DataView(ab);
-      const ch = [];
-      let o = 0;
-      const ws = s => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
-      ws('RIFF'); o+=4; dv.setUint32(o, 36 + buf.length*nc*2, true); o+=4;
-      ws('WAVE'); o+=4; ws('fmt '); o+=4;
-      dv.setUint32(o,16,true);o+=4; dv.setUint16(o,1,true);o+=2; dv.setUint16(o,nc,true);o+=2;
-      dv.setUint32(o,sr,true);o+=4; dv.setUint32(o,sr*nc*2,true);o+=4;
-      dv.setUint16(o,nc*2,true);o+=2; dv.setUint16(o,16,true);o+=2;
-      ws('data'); o+=4; dv.setUint32(o, buf.length*nc*2, true); o+=4;
-      for (let i = 0; i < nc; i++) ch.push(buf.getChannelData(i));
-      for (let i = 0; i < buf.length; i++) {
-        for (let c = 0; c < nc; c++) {
-          dv.setInt16(o, Math.max(-1, Math.min(1, ch[c][i])) * 0x7FFF, true); o+=2;
-        }
-      }
-      return new Blob([ab], { type: 'audio/wav' });
-    }
-
-    // ── Decoder ───────────────────────────────────────────────────────────────
-    async function decodeAudio() {
-      const fileEl = document.getElementById('audioFile');
-      if (!fileEl.files[0]) { alert('Select a WAV file first!'); return; }
-
-      const mode       = document.getElementById('decMode').value;
-      const sampleRate = parseInt(document.getElementById('decSampleRate').value);
-      const cpm        = parseInt(document.getElementById('decCpm').value);
-      const spb        = Math.floor((60 / (cpm * 8)) * sampleRate);
-      const statusElem = document.getElementById('statusMessageDec');
-      statusElem.textContent = 'Decoding\u2026';
-
-      const arrayBuf = await fileEl.files[0].arrayBuffer();
-      const decCtx   = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-      const isPSK    = mode === 'psk';
-
-      decCtx.decodeAudioData(arrayBuf, async function(audioBuf) {
-        const data      = audioBuf.getChannelData(0);
-        const totalBits = Math.floor(data.length / spb);
-
-        let bitArr = null, gpuUsed = false;
-        const dev  = await getGPU();
-
-        if (dev) {
-          try {
-            const samplesGPU = dev.createBuffer({ size: data.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-            dev.queue.writeBuffer(samplesGPU, 0, data);
-            const outGPU  = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-            const readGPU = dev.createBuffer({ size: totalBits * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
-            const uni    = new Uint32Array([spb, isPSK ? 1 : 0, totalBits, 0]);
-            const uniGPU = dev.createBuffer({ size: uni.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-            dev.queue.writeBuffer(uniGPU, 0, uni);
-
-            const mod = dev.createShaderModule({ code: `
-              @group(0) @binding(0) var<storage, read>       samples : array<f32>;
-              @group(0) @binding(1) var<storage, read_write> output  : array<u32>;
-              @group(0) @binding(2) var<uniform>             params  : vec4<u32>;
-              @compute @workgroup_size(256)
-              fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-                let bi = gid.x;
-                if (bi >= params.z) { return; }
-                let start = bi * params.x;
-                let end   = start + params.x;
-                var sum: f32 = 0.0; var pos: u32 = 0u; var neg: u32 = 0u;
-                for (var j = start; j < end; j++) {
-                  let s = samples[j]; sum += s;
-                  if (s > 0.0) { pos++; } else { neg++; }
-                }
-                if (params.y == 0u) {
-                  output[bi] = select(0u, 1u, sum > 0.0);
-                } else {
-                  output[bi] = select(0u, 1u, pos > neg);
-                }
-              }
-            `});
-
-            const pipeline = dev.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
-            const bg = dev.createBindGroup({
-              layout: pipeline.getBindGroupLayout(0),
-              entries: [
-                { binding: 0, resource: { buffer: samplesGPU } },
-                { binding: 1, resource: { buffer: outGPU     } },
-                { binding: 2, resource: { buffer: uniGPU     } }
-              ]
-            });
-            const enc  = dev.createCommandEncoder();
-            const pass = enc.beginComputePass();
-            pass.setPipeline(pipeline); pass.setBindGroup(0, bg);
-            pass.dispatchWorkgroups(Math.ceil(totalBits / 256));
-            pass.end();
-            enc.copyBufferToBuffer(outGPU, 0, readGPU, 0, totalBits * 4);
-            dev.queue.submit([enc.finish()]);
-            await readGPU.mapAsync(GPUMapMode.READ);
-            bitArr  = new Uint32Array(readGPU.getMappedRange().slice(0));
-            readGPU.unmap();
-            gpuUsed = true;
-          } catch(e) { console.warn('WebGPU decode failed:', e); bitArr = null; }
-        }
-
-        let binary = '';
-        if (bitArr) {
-          binary = Array.from(bitArr).join('');
-        } else {
-          for (let i = 0; i < totalBits; i++) {
-            const s = i * spb, e2 = s + spb;
-            if (!isPSK) {
-              let sum = 0; for (let j = s; j < e2; j++) sum += data[j];
-              binary += sum > 0 ? '1' : '0';
-            } else {
-              let pos = 0, neg = 0;
-              for (let j = s; j < e2; j++) { if (data[j] > 0) pos++; else neg++; }
-              binary += pos > neg ? '1' : '0';
-            }
-          }
-        }
-
-        document.getElementById('binaryOutput').value = binary;
-
-        let text = '';
-        for (let i = 0; i < binary.length; i += 8) {
-          const byte = binary.slice(i, i + 8);
-          if (byte.length === 8) {
-            const c = parseInt(byte, 2);
-            text += (c >= 32 && c <= 126) ? String.fromCharCode(c) : '.';
-          }
-        }
-        document.getElementById('textOutput').value = text;
-        statusElem.textContent = 'Decoded ' + totalBits + ' bits.';
-
-      }, () => { alert('Unable to decode audio file.'); statusElem.textContent = ''; });
-    }
+    return -1;
+  }
   </script>
-
 </body>
 </html>
